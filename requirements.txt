@@ -1,0 +1,4 @@
+cyvcf2
+matplotlib
+numpy
+scipy
