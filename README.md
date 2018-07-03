@@ -5,9 +5,11 @@ An easy to install and run mutational signature calculator.
 This library estimates exposures, given a list of existing signatures.
 
 ## Installation
+```
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+```
 
 ## Inputs
 * genome.fa
