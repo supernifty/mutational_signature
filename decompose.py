@@ -64,8 +64,12 @@ def grid_search(A, b, max_sigs=4):
           best = (candidate, distance)
   return best[0]
 
-def decompose(signatures, counts, out, metric):
+def decompose(signatures, counts, out, metric, seed):
   logging.info('finding signatures {} in {}...'.format(signatures, counts))
+
+  if seed is not None:
+    logging.info('setting random seed to %i', seed)
+    random.seed(seed)
 
   # make array of signatures (A = sigs x classes)
   names = []
@@ -128,6 +132,7 @@ if __name__ == '__main__':
   parser.add_argument('--signatures', required=True, help='signatures')
   parser.add_argument('--counts', required=True, help='counts')
   parser.add_argument('--metric', required=False, default='cosine', help='metric. cosine or euclidean')
+  parser.add_argument('--seed', required=False, type=int, help='random number seed for reproducibility')
   args = parser.parse_args()
   logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
-  decompose(args.signatures, args.counts, sys.stdout, args.metric)
+  decompose(args.signatures, args.counts, sys.stdout, args.metric, args.seed)
