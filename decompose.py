@@ -40,8 +40,7 @@ def make_distance(A, b, metric):
     '''
       x is the current estimate of exposures
     '''
-    xin = x / np.sum(x) # normalize
-    estimate = np.dot(A, xin)
+    estimate = np.dot(A, x)
     similarity = b.dot(estimate) / (np.linalg.norm(b) * np.linalg.norm(estimate))
     return -similarity
 
@@ -64,7 +63,7 @@ def grid_search(A, b, max_sigs=4):
           best = (candidate, distance)
   return best[0]
 
-def decompose(signatures, counts, out, metric, seed):
+def decompose(signatures, counts, out, metric, seed, evaluate):
   logging.info('finding signatures {} in {}...'.format(signatures, counts))
 
   if seed is not None:
@@ -103,19 +102,29 @@ def decompose(signatures, counts, out, metric, seed):
   # find x for Ax = b, x > 0 x = exposure to signature
   b = np.array(b)
 
-  x0 = np.array([random.random() for _ in range(0, A.shape[1])])
-  x0 = x0 / sum(x0) # normalize
+  if evaluate is None: # find a solution
+    x0 = np.array([random.random() for _ in range(0, A.shape[1])])
+    x0 = x0 / sum(x0) # normalize
+  
+    # solve with least squared (must use euclidean distance)
+    #result = scipy.optimize.least_squares(make_distance(A, b), x0, bounds=(0.0, np.inf)).x
+  
+    # solve with basinhopping
+    bounds=[(0.0, np.inf)] * len(x0)
+    minimizer_kwargs = dict(method="L-BFGS-B", bounds=bounds)
+    result = scipy.optimize.basinhopping(make_distance(A, b, metric), x0, minimizer_kwargs=minimizer_kwargs, stepsize=5, T=5).x
 
-  # solve with least squared (must use euclidean distance)
-  #result = scipy.optimize.least_squares(make_distance(A, b), x0, bounds=(0.0, np.inf)).x
+    # solve with grid
+    #result = grid_search(A, b)
 
-  # solve with basinhopping
-  bounds=[(0.0, np.inf)] * len(x0)
-  minimizer_kwargs = dict(method="L-BFGS-B", bounds=bounds)
-  result = scipy.optimize.basinhopping(make_distance(A, b, metric), x0, minimizer_kwargs=minimizer_kwargs, stepsize=5, T=5).x
-
-  # solve with grid
-  #result = grid_search(A, b)
+  else: # use provided solution
+    result = [0] * len(names)
+    for line in open(args.evaluate, 'r'):
+      fields = line.strip('\n').split('\t')
+      if fields[0] in names:
+        result[names.index(fields[0])] = float(fields[1])
+      else:
+        logging.info('skipped %s', line.strip('\n'))
 
   # write signature exposure
   total = sum(result)
@@ -125,7 +134,7 @@ def decompose(signatures, counts, out, metric, seed):
 
   # compare reconstruction
   error = make_distance(A, b, metric)(result)
-  logging.info('Calculated Error: {:.2f}'.format(error))
+  logging.info('Calculated Error: {:.5f}'.format(error))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature finder')
@@ -133,6 +142,7 @@ if __name__ == '__main__':
   parser.add_argument('--counts', required=True, help='counts')
   parser.add_argument('--metric', required=False, default='cosine', help='metric. cosine or euclidean')
   parser.add_argument('--seed', required=False, type=int, help='random number seed for reproducibility')
+  parser.add_argument('--evaluate', required=False, help='evaluate a list of exposures')
   args = parser.parse_args()
   logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
-  decompose(args.signatures, args.counts, sys.stdout, args.metric, args.seed)
+  decompose(args.signatures, args.counts, sys.stdout, args.metric, args.seed, args.evaluate)
