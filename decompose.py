@@ -37,11 +37,11 @@ def make_distance(A, b, metric):
     return error
 
   def cosine(x):
-    xin = x * x
-    xin = xin / np.sum(xin)
+    '''
+      x is the current estimate of exposures
+    '''
+    xin = x / np.sum(x) # normalize
     estimate = np.dot(A, xin)
-    #log_estimate = np.log(np.maximum(estimate, 1e-6))
-
     similarity = b.dot(estimate) / (np.linalg.norm(b) * np.linalg.norm(estimate))
     return -similarity
 
