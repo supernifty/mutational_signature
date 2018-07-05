@@ -24,10 +24,12 @@ def make_distance(A, b, metric):
       return euclidean(x)
     if metric == 'cosine':
       return cosine(x)
+    if metric == 'l1':
+      return l1(x)
     raise ValueError('Unknown metric {}'.format(metric))
 
   def euclidean(x):
-    estimate = np.dot(A, x)
+    estimate = np.dot(A, x / sum(x))
 
     # squared error on each term (return this for least_squares)
     residual_term = [math.pow(estimate[i] - b[i], 2) for i in range(len(b))]
@@ -43,6 +45,20 @@ def make_distance(A, b, metric):
     estimate = np.dot(A, x)
     similarity = b.dot(estimate) / (np.linalg.norm(b) * np.linalg.norm(estimate))
     return -similarity
+
+  def l1(x):
+    '''
+      l1 difference
+    '''
+    estimate = np.dot(A, x / sum(x))
+
+    # squared error on each term (return this for least_squares)
+    residual_term = [abs(estimate[i] - b[i]) for i in range(len(b))]
+
+    # total error
+    error = sum(residual_term)
+    return error
+
 
   return distance
 
@@ -125,6 +141,7 @@ def decompose(signatures, counts, out, metric, seed, evaluate):
         result[names.index(fields[0])] = float(fields[1])
       else:
         logging.info('skipped %s', line.strip('\n'))
+    result = np.array(result)
 
   # write signature exposure
   total = sum(result)
@@ -133,14 +150,15 @@ def decompose(signatures, counts, out, metric, seed, evaluate):
     sys.stdout.write('{}\t{:.3f}\n'.format(names[i], result[i] / total))
 
   # compare reconstruction
-  error = make_distance(A, b, metric)(result)
-  logging.info('Calculated Error: {:.5f}'.format(error))
+  for metric in ('euclidean', 'cosine', 'l1'):
+    error = make_distance(A, b, metric)(result)
+    logging.info('%s error:\t%.5f', metric, error)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature finder')
   parser.add_argument('--signatures', required=True, help='signatures')
   parser.add_argument('--counts', required=True, help='counts')
-  parser.add_argument('--metric', required=False, default='cosine', help='metric. cosine or euclidean')
+  parser.add_argument('--metric', required=False, default='cosine', help='metric. cosine, euclidean, or l1')
   parser.add_argument('--seed', required=False, type=int, help='random number seed for reproducibility')
   parser.add_argument('--evaluate', required=False, help='evaluate a list of exposures')
   args = parser.parse_args()
