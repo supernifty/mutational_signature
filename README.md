@@ -29,5 +29,5 @@ python plot.py sample.png < sample.count
 
 Then find the most likely combination of signatures:
 ```
-python signature.py --signatures signatures.txt --counts sample.count > sample.signature
+python decompose.py --signatures signatures.txt --counts sample.count > sample.signature
 ```
