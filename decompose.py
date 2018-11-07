@@ -161,6 +161,11 @@ if __name__ == '__main__':
   parser.add_argument('--metric', required=False, default='cosine', help='metric. cosine, euclidean, or l1')
   parser.add_argument('--seed', required=False, type=int, help='random number seed for reproducibility')
   parser.add_argument('--evaluate', required=False, help='evaluate a list of exposures')
+  parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
-  logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
+  if args.verbose:
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
+  else:
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
+
   decompose(args.signatures, args.counts, sys.stdout, args.metric, args.seed, args.evaluate)
