@@ -6,6 +6,7 @@ This library estimates exposures, given a list of existing signatures.
 
 ## Installation
 ```
+cd decompose
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
