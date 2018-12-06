@@ -94,7 +94,10 @@ def decompose(signatures, counts, out, metric, seed, evaluate):
     fields = line.strip('\n').split('\t')
     if first:
       first = False
-      signature_classes = ['{}{}{}>{}'.format(f[0], f[1], f[3], f[2]) for f in fields]
+      if '>' in fields[1]:
+        signature_classes = fields[1:]
+      else:
+        signature_classes = ['{}{}{}>{}'.format(f[0], f[1], f[3], f[2]) for f in fields[1:]]
       logging.debug('%i signature classes', len(signature_classes))
       continue
     names.append(fields[0])
@@ -102,9 +105,12 @@ def decompose(signatures, counts, out, metric, seed, evaluate):
     A = np.vstack([A, row]) # 30x96
 
   A = np.transpose(A)
+
   
   # make target (b = observed_classes)
   b = [0] * len(signature_classes)
+
+
   first = True
   for idx, line in enumerate(open(counts, 'r')):
     if first:
@@ -145,8 +151,12 @@ def decompose(signatures, counts, out, metric, seed, evaluate):
 
   # write signature exposure
   total = sum(result)
-  sorted_indices = sorted(range(len(result)), key=lambda k: result[k])
-  for i in reversed(sorted_indices):
+  #sorted_indices = sorted(range(len(result)), key=lambda k: result[k])
+  #for i in reversed(sorted_indices):
+  #  sys.stdout.write('{}\t{:.3f}\n'.format(names[i], result[i] / total))
+
+  # sort by name
+  for i in sorted(range(len(result)), key=lambda k: names[k]):
     sys.stdout.write('{}\t{:.3f}\n'.format(names[i], result[i] / total))
 
   # compare reconstruction

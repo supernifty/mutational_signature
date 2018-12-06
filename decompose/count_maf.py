@@ -30,10 +30,13 @@ def update_chroms(required, chroms, genome, next_chrom):
         next_chrom = line[1:].split(' ')[0]
         logging.debug('reading chrom %s from genome...', next_chrom)
       else:
-        # remove previous chromosomes
-        chroms[next_chrom] = ''.join(seq)
+        # don't overwrite previous chromosomes
+        if next_chrom in chroms:
+          logging.debug('already have chrom %s. not overwriting', next_chrom)
+        else:
+          chroms[next_chrom] = ''.join(seq)
+          logging.debug('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
         seq = []
-        logging.debug('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
         if required == next_chrom:
           next_chrom = line[1:].split(' ')[0]
           logging.debug('required chrom %s found', next_chrom)
@@ -51,7 +54,7 @@ def update_chroms(required, chroms, genome, next_chrom):
 
 def update_counts(counts, pos, chrom, ref, alt, chroms):
   if pos == 1 or pos > len(chroms[chrom]):
-    logging.info('skipped edge variant at %s:%i', chrom, pos)
+    logging.info('skipped edge variant at %s:%i < %i', chrom, pos, len(chroms[chrom]))
     return
   if len(ref.replace('-', '')) != 1 or len(alt.replace('-', '')) != 1:
     logging.info('skipped indel at %s:%i', chrom, pos)
@@ -75,11 +78,12 @@ def update_counts(counts, pos, chrom, ref, alt, chroms):
 def get_value(header, col, row):
   return row[header.index(col)]
 
-def count(genome_fh, maf, sample, out):
+def count_contexts(genome_fh, maf, sample=None, chroms=None):
   logging.info('processing %s...', maf)
-  chroms = {}
+  if chroms is None:
+    chroms = {}
   chroms_seen = set()
-  counts = collections.defaultdict(int)
+  counts = {}
   next_chrom = None
 
   header = None
@@ -93,14 +97,14 @@ def count(genome_fh, maf, sample, out):
     #Hugo_Symbol     Entrez_Gene_Id  Center  NCBI_Build      Chromosome      Start_Position  End_Position    Strand  Variant_Classification  Variant_Type    Reference_Allele        Tumor_Seq_Allele1       Tumor_Seq_Allele2       dbSNP_RS        dbSNP_Val_Status        Tumor_Sample_Barcode    Matched_Norm_Sample_Barcode     Match_Norm_Seq_Allele1  Match_Norm_Seq_Allele2  Tumor_Validation_Allele1        Tumor_Validation_Allele2        Match_Norm_Validation_Allele1   Match_Norm_Validation_Allele2   Verification_Status     Validation_Status       Mutation_Status Sequencing_Phase        Sequence_Source Validation_Method       Score   BAM_File        Sequencer       Tumor_Sample_UUID       Matched_Norm_Sample_UUID        HGVSc   HGVSp   HGVSp_Short     Transcript_ID   Exon_Number     t_depth t_ref_count     t_alt_count     n_depth n_ref_count     n_alt_count     all_effects     Allele  Gene    Feature Feature_type    One_Consequence Consequence     cDNA_position   CDS_position    Protein_position        Amino_acids Codons  Existing_variation      ALLELE_NUM      DISTANCE        TRANSCRIPT_STRAND       SYMBOL  SYMBOL_SOURCE   HGNC_ID BIOTYPE CANONICAL       CCDS    ENSP    SWISSPROT       TREMBL  UNIPARC RefSeq  SIFT    PolyPhen        EXON    INTRON  DOMAINS GMAF    AFR_MAF AMR_MAF ASN_MAF EAS_MAF EUR_MAF SAS_MAF AA_MAF  EA_MAF  CLIN_SIG        SOMATIC PUBMED  MOTIF_NAME      MOTIF_POS       HIGH_INF_POS    MOTIF_SCORE_CHANGE      IMPACT  PICK    VARIANT_CLASS   TSL     HGVS_OFFSET     PHENO   MINIMISED       ExAC_AF ExAC_AF_Adj     ExAC_AF_AFR     ExAC_AF_AMR     ExAC_AF_EAS     ExAC_AF_FIN     ExAC_AF_NFE     ExAC_AF_OTH     ExAC_AF_SAS     GENE_PHENO      FILTER  CONTEXT src_vcf_id      tumor_bam_uuid  normal_bam_uuid case_id GDC_FILTER      COSMIC  MC3_Overlap     GDC_Validation_Status
 
     row_sample = get_value(header, "Tumor_Sample_Barcode", row)
-    if row_sample != sample:
+    if sample is not None and row_sample != sample:
       continue
 
     chrom = get_value(header, "Chromosome", row)
 
     if chrom not in chroms_seen:
       logging.debug('chrom %s seen in maf', chrom)
-      chroms = {} # wipe previous chromosomes
+      #chroms = {} # wipe previous chromosomes (TODO if maf sorted)
       next_chrom = update_chroms(chrom, chroms, genome_fh, next_chrom)
       chroms_seen.add(chrom)
 
@@ -108,18 +112,26 @@ def count(genome_fh, maf, sample, out):
     ref = get_value(header, "Reference_Allele", row).replace('-', '')
     alt = get_value(header, "Tumor_Seq_Allele2", row).replace('-', '')
 
-    update_counts(counts, pos, chrom, ref, alt, chroms)
+    if row_sample not in counts:
+      counts[row_sample] = collections.defaultdict(int)
+
+    update_counts(counts[row_sample], pos, chrom, ref, alt, chroms)
 
     if (line + 1) % 100000 == 0:
-      logging.debug('processed %i lines. current counts: %s...', line + 1, ' '.join(['{}:{}'.format(k, counts[k]) for k in counts]))
+      logging.debug('processed %i lines. %i samples seen...', line + 1, len(counts))
     
   logging.info('processing %s: done', maf)
 
+  return (counts, chroms)
+
+def write_counts(genome_fh, maf, sample, out):
+  counts, chroms = count_contexts(genome_fh, maf, sample)
+
   # write out results
-  total_count = sum([counts[v] for v in counts])
+  total_count = sum([counts[sample][v] for v in counts[sample]])
   out.write('{}\t{}\t{}\n'.format('Variation', 'Count', 'Probability'))
-  for k in sorted(counts):
-    out.write('{}\t{}\t{:.3f}\n'.format(k, counts[k], counts[k] / total_count))
+  for k in sorted(counts[sample]):
+    out.write('{}\t{}\t{:.3f}\n'.format(k, counts[sample][k], counts[sample][k] / total_count))
   # add zero results
   for ref in ('C', 'T'):
     for alt in ('A', 'C', 'G', 'T'):
@@ -138,4 +150,4 @@ if __name__ == '__main__':
   parser.add_argument('--sample', required=True, help='sample')
   args = parser.parse_args()
   logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
-  count(open(args.genome, 'r'), args.maf, args.sample, sys.stdout)
+  write_counts(open(args.genome, 'r'), args.maf, args.sample, sys.stdout)

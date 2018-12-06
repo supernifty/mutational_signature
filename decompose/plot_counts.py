@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+'''
+  plots the 96 snv contexts given a count input
+'''
 
 import sys
 
