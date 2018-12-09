@@ -62,7 +62,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions):
 
   # now plot
   #colors = [ '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabebe', '#469990', '#e6beff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1' ]
-  colors = [ '#f6295B', '#4cc45b', '#fff129', '#5373e8', '#f59241', '#a12ec4', '#52e4f4', '#f042f6', '#cfff55', '#facece', '#56a9a0', '#f6ceff', '#aA7334', '#fffad8', '#901010', '#baffd3', '#909000', '#ffe8c1' ]
+  colors = [ '#f6597B', '#5cc45b', '#fff139', '#6373e8', '#f59251', '#e16e44', '#62e4f4', '#f052f6', '#dfff55', '#fadece', '#66a9a0', '#f6deff', '#aA7344', '#fffae8', '#901020', '#caffd3', '#909010', '#ffe8d1' ]
   
   fig = plt.figure(figsize=(16, len(samples)))
   ax = fig.add_subplot(111)

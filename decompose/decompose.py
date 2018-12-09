@@ -151,6 +151,7 @@ def decompose(signatures, counts, out, metric, seed, evaluate):
 
   # write signature exposure
   total = sum(result)
+
   #sorted_indices = sorted(range(len(result)), key=lambda k: result[k])
   #for i in reversed(sorted_indices):
   #  sys.stdout.write('{}\t{:.3f}\n'.format(names[i], result[i] / total))
