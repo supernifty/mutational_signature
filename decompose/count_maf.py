@@ -140,7 +140,7 @@ def write_counts(genome_fh, maf, sample, out):
       for prefix in ('A', 'C', 'G', 'T'):
         for suffix in ('A', 'C', 'G', 'T'):
           count = '{}{}{}>{}'.format(prefix, ref, suffix, alt)
-          if count not in counts:
+          if count not in counts[sample]:
             out.write('{}\t{}\t{:.3f}\n'.format(count, 0, 0))
 
 if __name__ == '__main__':
