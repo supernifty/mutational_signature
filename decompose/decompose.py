@@ -62,12 +62,20 @@ def make_distance(A, b, metric):
 
   return distance
 
-def grid_search(A, b, max_sigs=4):
+def grid_search(A, b, metric, max_sigs):
+  if max_sigs is None:
+    max_sigs = 3
+
+  logging.info('grid_search with up to %i signatures', max_sigs)
+
+  if max_sigs > 3:
+    logging.warn('grid_search with more than 3 sigs can be slow')
+
   best = (None, 1e9)
-  dist_fn = make_distance(A, b)
+  dist_fn = make_distance(A, b, metric)
   for sigs in range(1, max_sigs + 1):
-    logging.debug('sig length %i', sigs)
-    for subsig in itertools.combinations(range(0, 30), sigs):
+    logging.info('finding best with sig length %i', sigs)
+    for tried, subsig in enumerate(itertools.combinations(range(0, A.shape[1]), sigs)): # all combinations of the specified number of sigs
       for weights in itertools.product(range(1, len(subsig) + 1), repeat=len(subsig)):
         candidate = [0] * A.shape[1]
         for idx, sig in enumerate(subsig):
@@ -77,10 +85,31 @@ def grid_search(A, b, max_sigs=4):
         if distance < best[1]:
           logging.debug('new best %f: %s', distance, candidate)
           best = (candidate, distance)
-  return best[0]
+      if tried % 1000 == 0:
+        logging.debug('tested %i...', tried)
+  return np.array(best[0])
 
-def decompose(signatures, counts, out, metric, seed, evaluate):
-  logging.info('finding signatures {} in {}...'.format(signatures, counts))
+def basin_hopping_solver(A, b, metric, max_sigs):
+
+  if max_sigs is not None:
+    logging.warn('Ignoring max_sigs parameter')
+
+  x0 = np.array([random.random() for _ in range(0, A.shape[1])])
+  x0 = x0 / sum(x0) # normalize
+ 
+  # solve with least squared (must use euclidean distance)
+  #result = scipy.optimize.least_squares(make_distance(A, b), x0, bounds=(0.0, np.inf)).x
+ 
+  # solve with basinhopping
+  bounds=[(0.0, np.inf)] * len(x0)
+  minimizer_kwargs = dict(method="L-BFGS-B", bounds=bounds)
+  result = scipy.optimize.basinhopping(make_distance(A, b, metric), x0, minimizer_kwargs=minimizer_kwargs, stepsize=5, T=5).x
+
+  return result
+
+
+def decompose(signatures, counts, out, metric, seed, evaluate, solver, max_sigs, context_cutoff):
+  logging.info('starting...')
 
   if seed is not None:
     logging.info('setting random seed to %i', seed)
@@ -90,6 +119,7 @@ def decompose(signatures, counts, out, metric, seed, evaluate):
   names = []
   A = np.empty((0, 96), float)
   first = True
+  exclude_map = collections.defaultdict(set)
   for line in open(signatures, 'r'):
     fields = line.strip('\n').split('\t')
     if first:
@@ -100,18 +130,28 @@ def decompose(signatures, counts, out, metric, seed, evaluate):
         signature_classes = ['{}{}{}>{}'.format(f[0], f[1], f[3], f[2]) for f in fields[1:]]
       logging.debug('%i signature classes', len(signature_classes))
       continue
-    names.append(fields[0])
+
+    # list of signatures to potentially exclude
     row = [float(x) for x in fields[1:]]
-    A = np.vstack([A, row]) # 30x96
+    for row_id, row_val in enumerate(row):
+      if row_val > context_cutoff:
+        logging.debug('potentially excluding signature %i if %s is empty because contribution is %s', len(names) + 1, signature_classes[row_id], fields[1 + row_id])
+        exclude_map[signature_classes[row_id]].add(len(names))
 
-  A = np.transpose(A)
+    names.append(fields[0])
+    A = np.vstack([A, row]) # 30x96 -> each row is a set of context values
 
-  
+  A = np.transpose(A) # -> each row is a signature
+
   # make target (b = observed_classes)
-  b = [0] * len(signature_classes)
+  b = [0] * len(signature_classes) # i.e. 96
 
+  # read the count percentages
 
   first = True
+  total_count = 0
+  excluded_signatures = set()
+
   for idx, line in enumerate(open(counts, 'r')):
     if first:
       first = False
@@ -120,26 +160,35 @@ def decompose(signatures, counts, out, metric, seed, evaluate):
     signature_index = signature_classes.index(fields[0])
     #b.append(float(fields[1])) # count
     b[signature_index] = float(fields[2]) # percentage
+    total_count += int(fields[1])
+
+    # check for excluded signatures
+    if int(fields[1]) == 0:
+      if len(exclude_map[fields[0]]) > 0:
+        logging.debug('excluding %s because %s is not present and has proportion >%.2f', ' '.join([names[x] for x in exclude_map[fields[0]]]), fields[0], context_cutoff)
+      [excluded_signatures.add(x) for x in exclude_map[fields[0]]]
+
+
+  if len(excluded_signatures) > 0:
+    logging.info('signatures to exclude: %s', ' '.join([names[x] for x in sorted(list(excluded_signatures))]))
+    names = np.delete(names, list(excluded_signatures), axis=0)
+    A = np.delete(A, list(excluded_signatures), axis=1)
 
   # find x for Ax = b, x > 0 x = exposure to signature
   b = np.array(b)
 
   if evaluate is None: # find a solution
-    x0 = np.array([random.random() for _ in range(0, A.shape[1])])
-    x0 = x0 / sum(x0) # normalize
-  
-    # solve with least squared (must use euclidean distance)
-    #result = scipy.optimize.least_squares(make_distance(A, b), x0, bounds=(0.0, np.inf)).x
-  
-    # solve with basinhopping
-    bounds=[(0.0, np.inf)] * len(x0)
-    minimizer_kwargs = dict(method="L-BFGS-B", bounds=bounds)
-    result = scipy.optimize.basinhopping(make_distance(A, b, metric), x0, minimizer_kwargs=minimizer_kwargs, stepsize=5, T=5).x
+    logging.info('finding signatures {} in {}...'.format(signatures, counts))
+    if solver == 'basin':
+      solver = basin_hopping_solver
+    elif solver == 'grid':
+      solver = grid_search
 
-    # solve with grid
-    #result = grid_search(A, b)
+    result = solver(A, b, metric, max_sigs)
+
 
   else: # use provided solution
+    logging.info('evaluating signatures {} in {}...'.format(signatures, counts))
     result = [0] * len(names)
     for line in open(args.evaluate, 'r'):
       fields = line.strip('\n').split('\t')
@@ -160,18 +209,27 @@ def decompose(signatures, counts, out, metric, seed, evaluate):
   for i in sorted(range(len(result)), key=lambda k: names[k]):
     sys.stdout.write('{}\t{:.3f}\n'.format(names[i], result[i] / total))
 
+  sys.stdout.write('Mutations\t{}\n'.format(total_count))
   # compare reconstruction
-  for metric in ('euclidean', 'cosine', 'l1'):
-    error = make_distance(A, b, metric)(result)
-    logging.info('%s error:\t%.5f', metric, error)
+  for m in ('euclidean', 'cosine', 'l1'):
+    error = make_distance(A, b, m)(result)
+    logging.info('%s error:\t%.5f', m, error)
+    if metric == m:
+      if metric == 'cosine':
+        sys.stdout.write('Error\t{:.3f}\n'.format(1.0 + error)) # -0.99 -> 0.01
+      else:
+        sys.stdout.write('Error\t{:.3f}\n'.format(error))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature finder')
-  parser.add_argument('--signatures', required=True, help='signatures')
-  parser.add_argument('--counts', required=True, help='counts')
+  parser.add_argument('--signatures', required=True, help='mutational signatures e.g. cosmic')
+  parser.add_argument('--counts', required=True, help='counts file')
   parser.add_argument('--metric', required=False, default='cosine', help='metric. cosine, euclidean, or l1')
+  parser.add_argument('--solver', required=False, default='basin', help='solver. basin, grid')
+  parser.add_argument('--max_sigs', required=False, type=int, help='maximum number of sigs to use')
+  parser.add_argument('--context_cutoff', required=False, type=float, default=1e6, help='exclude signatures with contexts above this percent that are not represented in the sample') # deconstructSigs = 0.2
   parser.add_argument('--seed', required=False, type=int, help='random number seed for reproducibility')
-  parser.add_argument('--evaluate', required=False, help='evaluate a list of exposures')
+  parser.add_argument('--evaluate', required=False, help='evaluate a mutational profile instead of calculating')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -179,4 +237,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  decompose(args.signatures, args.counts, sys.stdout, args.metric, args.seed, args.evaluate)
+  decompose(args.signatures, args.counts, sys.stdout, args.metric, args.seed, args.evaluate, args.solver, args.max_sigs, args.context_cutoff)

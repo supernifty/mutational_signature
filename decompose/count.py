@@ -82,7 +82,7 @@ def count(genome_fh, vcf, out):
 
     if variant.CHROM not in chroms_seen:
       logging.debug('chrom %s seen in vcf', variant.CHROM)
-      chroms = {} # wipe previous chromosomes
+      # chroms = {} # wipe previous chromosomes - bad idea
       next_chrom = update_chroms(variant.CHROM, chroms, genome_fh, next_chrom)
       chroms_seen.add(variant.CHROM)
 

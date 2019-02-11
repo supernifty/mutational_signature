@@ -32,10 +32,21 @@ python count.py --genome genome.fa --vcf sample.vcf > sample.count
 
 Make a signature plot:
 ```
-python plot.py sample.png < sample.count
+python plot_components.py sample.png < sample.count
 ```
 
-Then find the most likely combination of signatures:
+Find the most likely combination of signatures:
 ```
-python decompose.py --signatures signatures.txt --counts sample.count > sample.signature
+python decompose.py --signatures signatures.txt --counts sample.count > calculation.txt
 ```
+
+## Functionality
+* combine_counts: for multiple count files, combine into a single tsv
+* combine_signatures: for multiple signature files, combine into a single tsv
+* compare_signatures: measures cosine similarity between input signatures
+* count_indels: counts indels in repeat regions using a an annotated bed file
+* count_maf: counts SNVs in context from a maf file
+* count: counts SNVs in context from a VCF file
+* decompose: calculate signature profile for a single sample
+* generate: build a new set of base signatures (incomplete)
+* plot_components: plot a signature profile
