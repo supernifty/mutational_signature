@@ -13,7 +13,6 @@ module load cURL/7.60.0-spartan_gcc-6.2.0
 ```
 
 ```
-cd decompose
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt

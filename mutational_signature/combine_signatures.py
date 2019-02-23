@@ -7,6 +7,8 @@ import argparse
 import logging
 import sys
 
+ADDITIONAL_FIELDS = ('Error', 'Mutations')
+
 def main(signatures, files):
   logging.info('starting...')
 
@@ -17,19 +19,23 @@ def main(signatures, files):
       first = False
       continue
     sigs.append(line.strip('\n').split('\t')[0])
+  sigs.extend(ADDITIONAL_FIELDS)
 
-  sys.stdout.write('Sample\t{}\n'.format('\t'.join(sigs)))
+  sys.stdout.write('Sample\t{}\n'.format('\t'.join([x.replace('Signature.', '') for x in sigs])))
   
   for file in files:
     #result = [file.split('.')[0]]
-    result = [file.split('/')[-1]]
+    result = [file.split('/')[-1].split('.')[0]]
     vals = {}
     for line in open(file, 'r'):
       sig, val = line.strip('\n').split('\t')
       vals[sig] = val
     # generate result
     for sig in sigs:
-      result.append(vals[sig])
+      if sig in vals:
+        result.append(vals[sig])
+      else:
+        result.append('0') # default
     sys.stdout.write('{}\n'.format('\t'.join(result)))
 
   logging.info('done')

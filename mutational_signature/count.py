@@ -72,10 +72,16 @@ def update_counts(counts, variant, chroms):
   v = normalize(v)
   counts[v] += 1
 
-def count(genome_fh, vcf, out):
+def count(genome_fh, vcf, out, chroms=None):
   logging.info('processing %s...', vcf)
-  chroms = {}
-  chroms_seen = set()
+
+  if chroms is None:
+    chroms = {}
+    chroms_seen = set()
+  else:
+    chroms_seen = set(chroms.keys())
+    logging.debug('using existing genome with %i chromosomes', len(chroms_seen))
+
   counts = collections.defaultdict(int)
   next_chrom = None
   for line, variant in enumerate(cyvcf2.VCF(vcf)):
@@ -108,6 +114,8 @@ def count(genome_fh, vcf, out):
           count = '{}{}{}>{}'.format(prefix, ref, suffix, alt)
           if count not in counts:
             out.write('{}\t{}\t{:.3f}\n'.format(count, 0, 0))
+
+  return chroms
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')

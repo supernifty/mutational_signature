@@ -156,6 +156,8 @@ def decompose(signatures, counts, out, metric, seed, evaluate, solver, max_sigs,
     if first:
       first = False
       continue
+    if line.startswith('#'):
+      continue
     fields = line.strip('\n').split('\t')
     signature_index = signature_classes.index(fields[0])
     #b.append(float(fields[1])) # count
