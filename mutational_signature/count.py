@@ -54,7 +54,7 @@ def update_counts(counts, variant, chroms):
     logging.info('skipped edge variant at %s:%i', variant.CHROM, variant.POS)
     return
   if len(variant.REF) != 1 or len(variant.ALT[0]) != 1:
-    logging.info('skipped indel at %s:%i', variant.CHROM, variant.POS)
+    logging.debug('skipped indel at %s:%i', variant.CHROM, variant.POS)
     return
 
   # 0 1 2 -> my indexes
@@ -72,7 +72,7 @@ def update_counts(counts, variant, chroms):
   v = normalize(v)
   counts[v] += 1
 
-def count(genome_fh, vcf, out, chroms=None):
+def count(genome_fh, vcf, out=None, chroms=None, variant_filter=None):
   logging.info('processing %s...', vcf)
 
   if chroms is None:
@@ -84,38 +84,44 @@ def count(genome_fh, vcf, out, chroms=None):
 
   counts = collections.defaultdict(int)
   next_chrom = None
-  for line, variant in enumerate(cyvcf2.VCF(vcf)):
+  filtered = 0
 
+  vcf_in = cyvcf2.VCF(vcf)
+  for line, variant in enumerate(vcf_in):
     if variant.CHROM not in chroms_seen:
       logging.debug('chrom %s seen in vcf', variant.CHROM)
-      # chroms = {} # wipe previous chromosomes - bad idea
       next_chrom = update_chroms(variant.CHROM, chroms, genome_fh, next_chrom)
       chroms_seen.add(variant.CHROM)
+
+    if variant_filter is not None and not variant_filter(vcf_in, variant):
+      filtered += 1
+      continue
 
     update_counts(counts, variant, chroms)
 
     if (line + 1) % 100000 == 0:
       logging.debug('processed %i lines. current counts: %s...', line + 1, ' '.join(['{}:{}'.format(k, counts[k]) for k in counts]))
     
-  logging.info('processing %s: done', vcf)
+  logging.info('processing %s: filtered %i. included %i. done', vcf, filtered, sum([counts[k] for k in counts]))
 
   # write out results
   total_count = sum([counts[v] for v in counts])
-  out.write('{}\t{}\t{}\n'.format('Variation', 'Count', 'Probability'))
-  for k in sorted(counts):
-    out.write('{}\t{}\t{:.3f}\n'.format(k, counts[k], counts[k] / total_count))
-  # add zero results
-  for ref in ('C', 'T'):
-    for alt in ('A', 'C', 'G', 'T'):
-      if ref == alt:
-        continue
-      for prefix in ('A', 'C', 'G', 'T'):
-        for suffix in ('A', 'C', 'G', 'T'):
-          count = '{}{}{}>{}'.format(prefix, ref, suffix, alt)
-          if count not in counts:
-            out.write('{}\t{}\t{:.3f}\n'.format(count, 0, 0))
+  if out is not None:
+    out.write('{}\t{}\t{}\n'.format('Variation', 'Count', 'Probability'))
+    for k in sorted(counts):
+      out.write('{}\t{}\t{:.3f}\n'.format(k, counts[k], counts[k] / total_count))
+    # add zero results
+    for ref in ('C', 'T'):
+      for alt in ('A', 'C', 'G', 'T'):
+        if ref == alt:
+          continue
+        for prefix in ('A', 'C', 'G', 'T'):
+          for suffix in ('A', 'C', 'G', 'T'):
+            count = '{}{}{}>{}'.format(prefix, ref, suffix, alt)
+            if count not in counts:
+              out.write('{}\t{}\t{:.3f}\n'.format(count, 0, 0))
 
-  return chroms
+  return {'chroms': chroms, 'counts': counts, 'total': total_count}
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')

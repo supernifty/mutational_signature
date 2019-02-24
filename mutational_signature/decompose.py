@@ -108,7 +108,7 @@ def basin_hopping_solver(A, b, metric, max_sigs):
   return result
 
 
-def decompose(signatures, counts, out, metric, seed, evaluate, solver, max_sigs, context_cutoff):
+def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_sigs, context_cutoff):
   logging.info('starting...')
 
   if seed is not None:
@@ -152,7 +152,7 @@ def decompose(signatures, counts, out, metric, seed, evaluate, solver, max_sigs,
   total_count = 0
   excluded_signatures = set()
 
-  for idx, line in enumerate(open(counts, 'r')):
+  for idx, line in enumerate(counts_fh):
     if first:
       first = False
       continue
@@ -180,7 +180,7 @@ def decompose(signatures, counts, out, metric, seed, evaluate, solver, max_sigs,
   b = np.array(b)
 
   if evaluate is None: # find a solution
-    logging.info('finding signatures {} in {}...'.format(signatures, counts))
+    logging.info('finding signatures from %s...', signatures)
     if solver == 'basin':
       solver = basin_hopping_solver
     elif solver == 'grid':
@@ -190,7 +190,7 @@ def decompose(signatures, counts, out, metric, seed, evaluate, solver, max_sigs,
 
 
   else: # use provided solution
-    logging.info('evaluating signatures {} in {}...'.format(signatures, counts))
+    logging.info('evaluating signatures from %s...', signatures)
     result = [0] * len(names)
     for line in open(args.evaluate, 'r'):
       fields = line.strip('\n').split('\t')
@@ -207,20 +207,25 @@ def decompose(signatures, counts, out, metric, seed, evaluate, solver, max_sigs,
   #for i in reversed(sorted_indices):
   #  sys.stdout.write('{}\t{:.3f}\n'.format(names[i], result[i] / total))
 
-  # sort by name
-  for i in sorted(range(len(result)), key=lambda k: names[k]):
-    sys.stdout.write('{}\t{:.3f}\n'.format(names[i], result[i] / total))
+  if out is not None:
+    # sort by name
+    for i in sorted(range(len(result)), key=lambda k: names[k]):
+      out.write('{}\t{:.3f}\n'.format(names[i], result[i] / total))
 
-  sys.stdout.write('Mutations\t{}\n'.format(total_count))
+    out.write('Mutations\t{}\n'.format(total_count))
+
   # compare reconstruction
   for m in ('euclidean', 'cosine', 'l1'):
     error = make_distance(A, b, m)(result)
     logging.info('%s error:\t%.5f', m, error)
     if metric == m:
       if metric == 'cosine':
-        sys.stdout.write('Error\t{:.3f}\n'.format(1.0 + error)) # -0.99 -> 0.01
-      else:
-        sys.stdout.write('Error\t{:.3f}\n'.format(error))
+        error = 1.0 + error
+      if out is not None:
+        out.write('Error\t{:.3f}\n'.format(error))
+      target_error = error
+
+  return {'signature_names': names, 'signature_values': result, 'total': total, 'error': target_error}
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature finder')
@@ -239,4 +244,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  decompose(args.signatures, args.counts, sys.stdout, args.metric, args.seed, args.evaluate, args.solver, args.max_sigs, args.context_cutoff)
+  decompose(args.signatures, open(args.counts, 'r'), sys.stdout, args.metric, args.seed, args.evaluate, args.solver, args.max_sigs, args.context_cutoff)
