@@ -160,8 +160,8 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
       continue
     fields = line.strip('\n').split('\t')
     signature_index = signature_classes.index(fields[0])
-    #b.append(float(fields[1])) # count
-    b[signature_index] = float(fields[2]) # percentage
+    b[signature_index] = float(fields[1]) # counts
+    #b[signature_index] = float(fields[2]) # percentage
     total_count += int(fields[1])
 
     # check for excluded signatures
@@ -173,8 +173,11 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
 
   if len(excluded_signatures) > 0:
     logging.info('signatures to exclude: %s', ' '.join([names[x] for x in sorted(list(excluded_signatures))]))
+    all_names = np.copy(names)
     names = np.delete(names, list(excluded_signatures), axis=0)
     A = np.delete(A, list(excluded_signatures), axis=1)
+  else:
+    all_names = names
 
   # find x for Ax = b, x > 0 x = exposure to signature
   b = np.array(b)
@@ -206,11 +209,23 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
   #sorted_indices = sorted(range(len(result)), key=lambda k: result[k])
   #for i in reversed(sorted_indices):
   #  sys.stdout.write('{}\t{:.3f}\n'.format(names[i], result[i] / total))
+  
+  # expand result
+  if len(all_names) > len(names):
+    all_result = [0] * len(all_names)
+    for i in range(len(names)):
+      value = result[i]
+      name = names[i]
+      all_index = list(all_names).index(name)
+      all_result[all_index] = value
+  else:
+    all_names = names
+    all_result = result
 
   if out is not None:
     # sort by name
-    for i in sorted(range(len(result)), key=lambda k: names[k]):
-      out.write('{}\t{:.3f}\n'.format(names[i], result[i] / total))
+    for i in sorted(range(len(all_result)), key=lambda k: all_names[k]):
+      out.write('{}\t{:.3f}\n'.format(all_names[i], all_result[i] / total))
 
     out.write('Mutations\t{}\n'.format(total_count))
 
@@ -225,7 +240,7 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
         out.write('Error\t{:.3f}\n'.format(error))
       target_error = error
 
-  return {'signature_names': names, 'signature_values': result, 'total': total, 'error': target_error}
+  return {'signature_names': all_names, 'signature_values': all_result, 'total': total, 'error': target_error}
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature finder')
