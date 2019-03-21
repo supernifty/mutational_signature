@@ -25,7 +25,8 @@ def main(signatures, files):
   
   for file in files:
     #result = [file.split('.')[0]]
-    result = [file.split('/')[-1].split('.')[0]]
+    #result = [file.split('/')[-1].split('.')[0]]
+    result = [file.split('/')[-1]]
     vals = {}
     for line in open(file, 'r'):
       sig, val = line.strip('\n').split('\t')

@@ -1,3 +1,4 @@
 cyvcf2
+intervaltree
 scipy
 sklearn

@@ -61,7 +61,6 @@ def plot(sigs, threshold, order, target, show_name, descriptions):
   samples = list(reversed(samples))
 
   # now plot
-  #colors = [ '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabebe', '#469990', '#e6beff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1' ]
   colors = [ '#f6597B', '#5cc45b', '#fff139', '#6373e8', '#f59251', '#e16e44', '#62e4f4', '#f052f6', '#dfff55', '#fadece', '#66a9a0', '#f6deff', '#aA7344', '#fffae8', '#901020', '#caffd3', '#909010', '#ffe8d1' ]
   
   fig = plt.figure(figsize=(16, len(samples)))
@@ -73,9 +72,9 @@ def plot(sigs, threshold, order, target, show_name, descriptions):
   for i in range(len(order)): # each signature
     vals = [row[i] for row in data] # all values for that signature
     if show_name and descriptions is not None and descriptions[i] != '':
-      patch_handles.append(ax.barh(sample_id, vals, color=colors[i % len(colors)], align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))
+      patch_handles.append(ax.barh(sample_id, vals, color=colors[i % len(colors)], alpha=0.8, align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))
     else:
-      patch_handles.append(ax.barh(sample_id, vals, color=colors[i % len(colors)], align='center', left=left, label=order[i]))
+      patch_handles.append(ax.barh(sample_id, vals, color=colors[i % len(colors)], alpha=0.8, align='center', left=left, label=order[i]))
     # accumulate the left-hand offsets
     left += vals
 

@@ -39,6 +39,11 @@ Find the most likely combination of signatures:
 python decompose.py --signatures signatures.txt --counts sample.count > calculation.txt
 ```
 
+Generate a signature plot for multiple samples
+```
+python plot_components.py --threshold 0.0 --show_signature --target out.png --order '1' '2' '3' '4' '5' '6' '7' '8' '9' '10' '11' '12' '13' '14' '15' '16' '17' '18' '19' '20' '21' '22' '23' '24' '25' '26' '27' '28' '29' '30' --descriptions 'age related' 'APOBEC' 'double-strand break-repair failure' 'tobacco' '' 'MMRd' 'UV exposure' '' '' 'POLE mutations' 'alkylating agents' '' 'APOBEC' '' 'MMRd' '' '' '' '' 'MMRd' 'unknown aetiology' 'aristolochic acid' 'unknown aetiology' 'aflatoxin exposure' '' 'MMRd' '' 'unknown aetiology' 'tobacco' '' < example/sample.sigs
+```
+
 ## Functionality
 * combine_counts: for multiple count files, combine into a single tsv
 * combine_signatures: for multiple signature files, combine into a single tsv

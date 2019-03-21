@@ -7,6 +7,8 @@ import gzip
 import logging
 import sys
 
+import intervaltree
+
 COMP = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
 def normalize(v):
@@ -28,7 +30,7 @@ def update_chroms(required, chroms, genome, next_chrom):
     if line.startswith('>'):
       if next_chrom is None: # first line of file
         next_chrom = line[1:].split(' ')[0]
-        logging.debug('reading chrom %s from genome...', next_chrom)
+        logging.debug('reading %s from genome...', next_chrom)
       else:
         # don't overwrite previous chromosomes
         if next_chrom in chroms:
@@ -78,7 +80,7 @@ def update_counts(counts, pos, chrom, ref, alt, chroms):
 def get_value(header, col, row):
   return row[header.index(col)]
 
-def count_contexts(genome_fh, maf, sample=None, chroms=None):
+def count_contexts(genome_fh, maf, sample=None, chroms=None, tree=None):
   logging.info('processing %s...', maf)
   if chroms is None:
     chroms = {}
@@ -87,6 +89,7 @@ def count_contexts(genome_fh, maf, sample=None, chroms=None):
   next_chrom = None
 
   header = None
+  filtered = 0
   for line, row in enumerate(csv.reader(gzip.open(maf, 'rt'), delimiter='\t')):
     if row[0].startswith('#'):
       continue
@@ -103,12 +106,15 @@ def count_contexts(genome_fh, maf, sample=None, chroms=None):
     chrom = get_value(header, "Chromosome", row)
 
     if chrom not in chroms_seen:
-      logging.debug('chrom %s seen in maf', chrom)
-      #chroms = {} # wipe previous chromosomes (TODO if maf sorted)
+      logging.debug('chrom %s seen in maf on line %i', chrom, line)
       next_chrom = update_chroms(chrom, chroms, genome_fh, next_chrom)
       chroms_seen.add(chrom)
 
     pos = int(get_value(header, "Start_Position", row))
+    if tree is not None and chrom in tree and len(tree[chrom].at(pos)) == 0:
+      filtered += 1
+      continue
+
     ref = get_value(header, "Reference_Allele", row).replace('-', '')
     alt = get_value(header, "Tumor_Seq_Allele2", row).replace('-', '')
 
@@ -120,15 +126,44 @@ def count_contexts(genome_fh, maf, sample=None, chroms=None):
     if (line + 1) % 100000 == 0:
       logging.debug('processed %i lines. %i samples seen...', line + 1, len(counts))
     
+  if filtered > 0:
+    logging.info('processing %s: filtered %i variants', maf, filtered)
   logging.info('processing %s: done', maf)
 
   return (counts, chroms)
 
-def write_counts(genome_fh, maf, sample, out):
-  counts, chroms = count_contexts(genome_fh, maf, sample)
+def make_tree(bed):
+  logging.info('building interval tree...')
+  result = {}
+  lines = bases = 0
+  for lines, line in enumerate(open(bed, 'r')):
+    if line.startswith('#'):
+      continue
+    fields = line.strip('\n').split('\t')
+    if fields[0] not in result:
+      result[fields[0]] = intervaltree.IntervalTree()
+    result[fields[0]][int(fields[1]):int(fields[2])] = True
+    bases += int(fields[2]) - int(fields[1])
+  logging.info('building interval tree: %i lines, %i bases', lines, bases)
+
+  return result
+ 
+def write_counts(genome_fh, maf, sample, out, bed=None):
+
+  if bed is not None:
+    tree = make_tree(bed)
+    logging.info('building interval tree: done')
+  else:
+    tree = None
+
+  counts, chroms = count_contexts(genome_fh, maf, sample, tree=tree)
 
   # write out results
+  if sample not in counts:
+    counts[sample] = collections.defaultdict(int)
+
   total_count = sum([counts[sample][v] for v in counts[sample]])
+
   out.write('{}\t{}\t{}\n'.format('Variation', 'Count', 'Probability'))
   for k in sorted(counts[sample]):
     out.write('{}\t{}\t{:.3f}\n'.format(k, counts[sample][k], counts[sample][k] / total_count))
@@ -148,6 +183,7 @@ if __name__ == '__main__':
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--maf', required=True, help='maf')
   parser.add_argument('--sample', required=True, help='sample')
+  parser.add_argument('--bed', required=False, help='filter variants')
   args = parser.parse_args()
   logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
-  write_counts(open(args.genome, 'r'), args.maf, args.sample, sys.stdout)
+  write_counts(open(args.genome, 'r'), args.maf, args.sample, sys.stdout, args.bed)
