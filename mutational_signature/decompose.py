@@ -11,7 +11,7 @@ import sys
 import numpy as np
 import scipy.optimize
 
-def make_distance(A, b, metric):
+def make_distance(A, b, metric, with_composition=False):
   '''
     assess the current candidate - how close is Ax to b?
     A = signature definitions: mutation_types x signatures
@@ -20,6 +20,9 @@ def make_distance(A, b, metric):
   '''
 
   def distance(x):
+    return distance_and_composition(x)[0]
+
+  def distance_and_composition(x):
     if metric == 'euclidean':
       return euclidean(x)
     if metric == 'cosine':
@@ -36,7 +39,7 @@ def make_distance(A, b, metric):
 
     # total error
     error = math.sqrt(sum(residual_term))
-    return error
+    return (error, residual_term)
 
   def cosine(x):
     '''
@@ -44,7 +47,13 @@ def make_distance(A, b, metric):
     '''
     estimate = np.dot(A, x)
     similarity = b.dot(estimate) / (np.linalg.norm(b) * np.linalg.norm(estimate))
-    return -similarity
+
+    # contribution to error
+    normalised_error = [abs(estimate[i] - b[i]) for i in range(len(b))]
+    #normalised_error = normalised_error / np.linalg.norm(normalised_error)
+    normalised_error = normalised_error / sum(normalised_error)
+
+    return (-similarity, normalised_error)
 
   def l1(x):
     '''
@@ -57,10 +66,20 @@ def make_distance(A, b, metric):
 
     # total error
     error = sum(residual_term)
-    return error
+    return (error, residual_term)
 
+  if with_composition:
+    return distance_and_composition
+  else:
+    return distance
 
-  return distance
+def context_difference(A, b, x):
+  '''
+    wrongness in context counts
+    positive value means signature has overshot
+  '''
+  estimate = np.dot(A, x)
+  return estimate - b
 
 def grid_search(A, b, metric, max_sigs):
   if max_sigs is None:
@@ -108,7 +127,7 @@ def basin_hopping_solver(A, b, metric, max_sigs):
   return result
 
 
-def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_sigs, context_cutoff):
+def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_sigs, context_cutoff, error_contribution):
   logging.info('starting...')
 
   if seed is not None:
@@ -170,7 +189,6 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
         logging.debug('excluding %s because %s is not present and has proportion >%.2f', ' '.join([names[x] for x in exclude_map[fields[0]]]), fields[0], context_cutoff)
       [excluded_signatures.add(x) for x in exclude_map[fields[0]]]
 
-
   if len(excluded_signatures) > 0:
     logging.info('signatures to exclude: %s', ' '.join([names[x] for x in sorted(list(excluded_signatures))]))
     all_names = np.copy(names)
@@ -231,13 +249,19 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
 
   # compare reconstruction
   for m in ('euclidean', 'cosine', 'l1'):
-    error = make_distance(A, b, m)(result)
-    logging.info('%s error:\t%.5f', m, error)
+    error = make_distance(A, b, m, with_composition=True)(result)
+    logging.info('%s error:\t%.5f', m, error[0])
     if metric == m:
       if metric == 'cosine':
-        error = 1.0 + error
+        total_error = 1.0 + error[0]
+      else:
+        total_error = error[0]
       if out is not None:
-        out.write('Error\t{:.3f}\n'.format(error))
+        out.write('Error\t{:.3f}\n'.format(total_error))
+        if error_contribution:
+          for context_name, error_contribution, difference in zip(signature_classes, error[1], context_difference(A, b, result)):
+            # context \t error % \t number of mutations
+            out.write('Error {}\t{:.3f}\t{:.1f}\n'.format(context_name, error_contribution, difference))
       target_error = error
 
   return {'signature_names': all_names, 'signature_values': all_result, 'total': total, 'error': target_error}
@@ -250,6 +274,7 @@ if __name__ == '__main__':
   parser.add_argument('--solver', required=False, default='basin', help='solver. basin, grid')
   parser.add_argument('--max_sigs', required=False, type=int, help='maximum number of sigs to use')
   parser.add_argument('--context_cutoff', required=False, type=float, default=1e6, help='exclude signatures with contexts above this percent that are not represented in the sample') # deconstructSigs = 0.2
+  parser.add_argument('--error_contribution', action='store_true', help='show contribution of each context to error')
   parser.add_argument('--seed', required=False, type=int, help='random number seed for reproducibility')
   parser.add_argument('--evaluate', required=False, help='evaluate a mutational profile instead of calculating')
   parser.add_argument('--verbose', action='store_true', help='more logging')
@@ -259,4 +284,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  decompose(args.signatures, open(args.counts, 'r'), sys.stdout, args.metric, args.seed, args.evaluate, args.solver, args.max_sigs, args.context_cutoff)
+  decompose(args.signatures, open(args.counts, 'r'), sys.stdout, args.metric, args.seed, args.evaluate, args.solver, args.max_sigs, args.context_cutoff, args.error_contribution)

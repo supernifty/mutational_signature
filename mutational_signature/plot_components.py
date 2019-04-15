@@ -19,7 +19,10 @@ from pylab import rcParams
 # rcParams['figure.figsize'] = 16, 10
 #FIGSIZE = (16, 8)
 
-def plot(sigs, threshold, order, target, show_name, descriptions):
+HEIGHT_MULTIPLIER = 2
+rcParams.update({'font.size': 16})
+
+def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold):
   logging.info('reading from stdin...')
 
   header = next(sigs)
@@ -61,9 +64,42 @@ def plot(sigs, threshold, order, target, show_name, descriptions):
   samples = list(reversed(samples))
 
   # now plot
-  colors = [ '#f6597B', '#5cc45b', '#fff139', '#6373e8', '#f59251', '#e16e44', '#62e4f4', '#f052f6', '#dfff55', '#fadece', '#66a9a0', '#f6deff', '#aA7344', '#fffae8', '#901020', '#caffd3', '#909010', '#ffe8d1' ]
+  #colors = [ '#f6597B', '#5cc45b', '#fff139', '#6373e8', '#f59251', '#e16e44', '#62e4f4', '#f052f6', '#dfff55', '#fadece', '#66a9a0', '#f6deff', '#aA7344', '#fffae8', '#901020', '#caffd3', '#909010', '#ffe8d1' ]
+  colors = [
+    '#cc5ac5',
+    '#61c350',
+    '#9358ca',
+    '#9bb932',
+    '#626cd4',
+    '#d8ab39',
+    '#5e73b8',
+    '#dc842f',
+    '#60a4da',
+    '#cd4b33', # 10
+    '#4ec584',
+    '#db3666',
+    '#3d9037',
+    '#d5509a',
+    '#69862a',
+    '#cb91d4',
+    '#b4ad4a',
+    '#98518b',
+    '#9db76f',
+    '#a44657', # 20
+    '#42c3c2',
+    '#e07a8a',
+    '#2b7650',
+    '#e38f6b',
+    '#5aad86',
+    '#995a2b',
+    '#5d8547',
+    '#c39e64',
+    '#676828',
+    '#977b1f' # 30
+  ]
   
-  fig = plt.figure(figsize=(16, len(samples)))
+  
+  fig = plt.figure(figsize=(16, HEIGHT_MULTIPLIER * len(samples)))
   ax = fig.add_subplot(111)
   patch_handles = []
   left = np.zeros(len(samples))
@@ -72,9 +108,9 @@ def plot(sigs, threshold, order, target, show_name, descriptions):
   for i in range(len(order)): # each signature
     vals = [row[i] for row in data] # all values for that signature
     if show_name and descriptions is not None and descriptions[i] != '':
-      patch_handles.append(ax.barh(sample_id, vals, color=colors[i % len(colors)], alpha=0.8, align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))
+      patch_handles.append(ax.barh(sample_id, vals, color=colors[(int(order[i]) - 1) % len(colors)], alpha=0.8, align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))
     else:
-      patch_handles.append(ax.barh(sample_id, vals, color=colors[i % len(colors)], alpha=0.8, align='center', left=left, label=order[i]))
+      patch_handles.append(ax.barh(sample_id, vals, color=colors[(int(order[i]) - 1) % len(colors)], alpha=0.8, align='center', left=left, label=order[i]))
     # accumulate the left-hand offsets
     left += vals
 
@@ -85,7 +121,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions):
           bl = patch.get_xy()
           x = 0.5 * patch.get_width() + bl[0]
           y = 0.5 * patch.get_height() + bl[1] - 0.2
-          if show_name and data[i][j] > 10:
+          if show_name and data[i][j] > description_threshold:
             if descriptions is not None and descriptions[j] != '':
               y = 0.5 * patch.get_height() + bl[1] - 0.3
               ax.text(x,y, '%s\n%s\n%d%%' % (order[j], descriptions[j], data[i][j]), ha='center')
@@ -100,15 +136,16 @@ def plot(sigs, threshold, order, target, show_name, descriptions):
   ax.set_ylabel('Sample')
   ax.set_title('Somatic mutational signatures per sample')
   #ax.legend(loc='best')
-  ax.legend(loc="upper right", bbox_to_anchor=(0.99,0.90), bbox_transform=plt.gcf().transFigure)
-  plt.subplots_adjust(top=0.9, right=0.83)
-  #plt.tight_layout()
+  ax.legend(loc="upper right", bbox_to_anchor=(0.985,0.90), bbox_transform=plt.gcf().transFigure)
+  #plt.subplots_adjust(top=0.91, right=0.83)
+  plt.tight_layout()
 
   plt.savefig(target)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Plot signature breakdown')
   parser.add_argument('--threshold', default=0.05, type=float, help='ignore sigs below this')
+  parser.add_argument('--description_threshold', default=10, type=int, help='show description if above this value')
   parser.add_argument('--order', nargs='+', required=False, help='ignore sigs below this')
   parser.add_argument('--descriptions', nargs='+', required=False, help='ignore sigs below this')
   parser.add_argument('--target', default='sigs.png', required=False, help='ignore sigs below this')
@@ -120,4 +157,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions)
+  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold)
