@@ -136,7 +136,6 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
 
   # make array of signatures (A = sigs x classes)
   names = []
-  A = np.empty((0, 96), float)
   first = True
   exclude_map = collections.defaultdict(set)
   for line in open(signatures, 'r'):
@@ -148,6 +147,7 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
       else:
         signature_classes = ['{}{}{}>{}'.format(f[0], f[1], f[3], f[2]) for f in fields[1:]]
       logging.debug('%i signature classes', len(signature_classes))
+      A = np.empty((0, len(signature_classes)), float)
       continue
 
     # list of signatures to potentially exclude
@@ -178,6 +178,9 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
     if line.startswith('#'):
       continue
     fields = line.strip('\n').split('\t')
+    if fields[0] not in signature_classes:
+      logging.info('context %s not in signature definitions', fields[0])
+      continue
     signature_index = signature_classes.index(fields[0])
     b[signature_index] = float(fields[1]) # counts
     #b[signature_index] = float(fields[2]) # percentage
