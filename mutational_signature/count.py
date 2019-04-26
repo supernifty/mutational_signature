@@ -72,6 +72,60 @@ def update_counts(counts, variant, chroms):
   v = normalize(v)
   counts[v] += 1
 
+def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None):
+  logging.info('processing %s with %i filters...', vcf, len(variant_filters))
+
+  if chroms is None:
+    chroms = {}
+    chroms_seen = set()
+  else:
+    chroms_seen = set(chroms.keys())
+    logging.debug('using existing genome with %i chromosomes', len(chroms_seen))
+
+  all_counts = [collections.defaultdict(int) for _ in range(len(variant_filters))]
+
+  next_chrom = None
+
+  vcf_in = cyvcf2.VCF(vcf)
+  for line, variant in enumerate(vcf_in):
+    if variant.CHROM not in chroms_seen:
+      logging.debug('chrom %s seen in vcf', variant.CHROM)
+      next_chrom = update_chroms(variant.CHROM, chroms, genome_fh, next_chrom)
+      chroms_seen.add(variant.CHROM)
+
+    for idx, variant_filter in enumerate(variant_filters):
+      if variant_filter(vcf_in, variant):
+        update_counts(all_counts[idx], variant, chroms)
+
+    if (line + 1) % 100000 == 0:
+      logging.debug('processed %i lines', line + 1)
+    
+  logging.info('processing %s. done', vcf)
+
+  # write out results
+  all_total_counts = []
+  for idx, counts in enumerate(all_counts):
+    out = outs[idx]
+    total_count = sum([counts[v] for v in counts])
+    all_total_counts.append(total_count)
+    if out is not None:
+      out.write('{}\t{}\t{}\n'.format('Variation', 'Count', 'Probability'))
+      for k in sorted(counts):
+        out.write('{}\t{}\t{:.3f}\n'.format(k, counts[k], counts[k] / total_count))
+      # add zero results
+      for ref in ('C', 'T'):
+        for alt in ('A', 'C', 'G', 'T'):
+          if ref == alt:
+            continue
+          for prefix in ('A', 'C', 'G', 'T'):
+            for suffix in ('A', 'C', 'G', 'T'):
+              count = '{}{}{}>{}'.format(prefix, ref, suffix, alt)
+              if count not in counts:
+                out.write('{}\t{}\t{:.3f}\n'.format(count, 0, 0))
+
+  return {'chroms': chroms, 'all_counts': all_counts, 'all_totals': all_total_counts}
+
+
 def count(genome_fh, vcf, out=None, chroms=None, variant_filter=None):
   logging.info('processing %s...', vcf)
 

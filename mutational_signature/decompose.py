@@ -127,7 +127,7 @@ def basin_hopping_solver(A, b, metric, max_sigs):
   return result
 
 
-def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_sigs, context_cutoff, error_contribution):
+def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_sigs, context_cutoff, error_contribution=False):
   logging.info('starting...')
 
   if seed is not None:
@@ -265,7 +265,7 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
           for context_name, error_contribution, difference in zip(signature_classes, error[1], context_difference(A, b, result)):
             # context \t error % \t number of mutations
             out.write('Error {}\t{:.3f}\t{:.1f}\n'.format(context_name, error_contribution, difference))
-      target_error = error
+      target_error = (total_error, error[1])
 
   return {'signature_names': all_names, 'signature_values': all_result, 'total': total, 'error': target_error}
 
