@@ -1,0 +1,96 @@
+Signature	Summary
+SBS1	Aging
+SBS2	AID/APOBEC
+SBS3	Defective HR (BRCA)
+SBS4	Tobacco smoking
+SBS5	Aging
+SBS6	MMRd
+SBS7a	UV
+SBS7b	UV
+SBS7c	UV
+SBS7d	UV
+SBS8	?
+SBS9	Hypermutation in lymphoid cells
+SBS10a	POLE exonuclease
+SBS10b	POLE exonuclease
+SBS11	Alkylating agents
+SBS12	?
+SBS13	AID/APOBEC
+SBS14	Concurrent POLE and MMRd
+SBS15	MMRd
+SBS16	?
+SBS17a	?
+SBS17b	?
+SBS18	Reactive oxygen species
+SBS19	?
+SBS20	POLD1 and MMRd
+SBS21	MMRd
+SBS22	Aristocholic Acid
+SBS23	?
+SBS24	Aflatoxin
+SBS25	Chemotherapy?
+SBS26	MMRd
+SBS27	Artefact
+SBS28	?
+SBS29	Tobacco chewing
+SBS30	NTHL1 (BER)
+SBS31	Platinum treatment
+SBS32	Azathioprine treatment
+SBS33	?
+SBS34	?
+SBS35	Platinum treatment
+SBS36	MUTYH (BER)
+SBS37	?
+SBS38	UV?
+SBS39	?
+SBS40	?
+SBS41	?
+SBS42	Haloalkane exposure
+SBS43	Artefact?
+SBS44	MMRd
+SBS45	8-oxo-guanine artefact
+SBS46	Artefact
+SBS47	Artefact
+SBS48	Artefact
+SBS49	Artefact
+SBS50	Artefact
+SBS51	Artefact
+SBS52	Artefact
+SBS53	Artefact
+SBS54	Artefact germline contamination
+SBS55	Artefact
+SBS56	Artefact
+SBS57	Artefact
+SBS58	Artefact
+SBS59	Artefact
+SBS60	Artefact
+SBS84	AID
+SBS85	AID
+DBS1	UV
+DBS2	tobacco smoking, age
+DBS3	POLE exonuclease
+DBS4	?
+DBS5	Platinum treatment
+DBS6	?
+DBS7	MMRd
+DBS8	?
+DBS9	?
+DBS10	MMRd
+DBS11	APOBEC?
+ID1	MMRd tendency
+ID2	MMRd tendency
+ID3	Tobacco smoking
+ID4	?
+ID5	Age
+ID6	Defective HR (BRCA)
+ID7	MMRd
+ID8	?
+ID9	?
+ID10	?
+ID11	?
+ID12	?
+ID13	UV
+ID14	?
+ID15	?
+ID16	?
+ID17	?

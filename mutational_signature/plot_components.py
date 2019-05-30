@@ -22,7 +22,7 @@ from pylab import rcParams
 HEIGHT_MULTIPLIER = 2
 rcParams.update({'font.size': 16})
 
-def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight):
+def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None):
   logging.info('reading from stdin with threshold %f and order %s...', threshold, order)
 
   header = next(sigs)
@@ -138,9 +138,9 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
 
   ax.set_yticks(sample_id)
   ax.set_yticklabels(samples)
-  ax.set_xlabel('Contribution of signatures to somatic mutations')
-  ax.set_ylabel('Sample')
-  ax.set_title('Somatic mutational signatures per sample')
+  ax.set_xlabel(xlabel or 'Contribution of signatures to somatic mutations')
+  ax.set_ylabel(ylabel or 'Sample')
+  ax.set_title(title or 'Somatic mutational signatures per sample')
 
   # place legend at right based on https://stackoverflow.com/questions/10101700/moving-matplotlib-legend-outside-of-the-axis-makes-it-cutoff-by-the-figure-box/10154763#10154763
   handles, labels = ax.get_legend_handles_labels()
@@ -157,6 +157,9 @@ if __name__ == '__main__':
   parser.add_argument('--target', default='sigs.png', required=False, help='output file')
   parser.add_argument('--show_signature', action='store_true', help='more logging')
   parser.add_argument('--highlight', nargs='*', required=False, help='signatures to highlight')
+  parser.add_argument('--xlabel', required=False, help='x axis label')
+  parser.add_argument('--ylabel', required=False, help='y axis label')
+  parser.add_argument('--title', required=False, help='title')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -164,4 +167,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight)
+  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title)

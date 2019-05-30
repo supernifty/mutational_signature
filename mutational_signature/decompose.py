@@ -139,14 +139,14 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
   first = True
   exclude_map = collections.defaultdict(set)
   for line in open(signatures, 'r'):
-    fields = line.strip('\n').split('\t')
+    fields = line.strip('\n\r').split('\t')
     if first:
       first = False
-      if '>' in fields[1]:
+      if '>' in fields[1] or len(fields[1]) != 4:
         signature_classes = fields[1:]
-      else:
+      else: # convert from abcd -> abd>c
         signature_classes = ['{}{}{}>{}'.format(f[0], f[1], f[3], f[2]) for f in fields[1:]]
-      logging.debug('%i signature classes', len(signature_classes))
+      logging.debug('%i signature classes: %s...', len(signature_classes), signature_classes[:3])
       A = np.empty((0, len(signature_classes)), float)
       continue
 
