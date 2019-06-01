@@ -114,9 +114,9 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       logging.info('not highlighting %s', order[i])
       alpha = 0.5
     if show_name and descriptions is not None and descriptions[i] != '':
-      patch_handles.append(ax.barh(sample_id, vals, color=colors[(int(order[i]) - 1) % len(colors)], alpha=alpha, align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))
+      patch_handles.append(ax.barh(sample_id, vals, color=colors[hash(order[i]) % len(colors)], alpha=alpha, align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))
     else:
-      patch_handles.append(ax.barh(sample_id, vals, color=colors[(int(order[i]) - 1) % len(colors)], alpha=alpha, align='center', left=left, label=order[i]))
+      patch_handles.append(ax.barh(sample_id, vals, color=colors[hash(order[i]) % len(colors)], alpha=alpha, align='center', left=left, label=order[i]))
     # accumulate the left-hand offsets
     left += vals
 
