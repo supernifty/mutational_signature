@@ -267,7 +267,7 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
             out.write('Error {}\t{:.3f}\t{:.1f}\n'.format(context_name, error_contribution, difference))
       target_error = (total_error, error[1])
 
-  return {'signature_names': all_names, 'signature_values': all_result, 'total': total, 'error': target_error}
+  return {'signature_names': all_names, 'signature_values': all_result, 'total': total, 'error': target_error, 'total_included': total_count}
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature finder')

@@ -19,13 +19,14 @@ from pylab import rcParams
 # rcParams['figure.figsize'] = 16, 10
 #FIGSIZE = (16, 8)
 
-HEIGHT_MULTIPLIER = 2
+HEIGHT_MULTIPLIER = 1.8
 rcParams.update({'font.size': 16})
 
 def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None):
   logging.info('reading from stdin with threshold %f and order %s...', threshold, order)
 
   header = next(sigs)
+  logging.debug('header is %s', header)
 
   if order is None:
     order = header[1:]
@@ -105,18 +106,28 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
   left = np.zeros(len(samples))
   sample_id = np.arange(len(samples))
 
+  colors_seen = set()
   for i in range(len(order)): # each signature
     vals = [row[i] for row in data] # all values for that signature
-    if highlight is None or order[i] in highlight:
+    if highlight is None or len(highlight) == 0 or order[i] in highlight:
       logging.info('highlighting %s', order[i])
       alpha = 0.9
     else:
       logging.info('not highlighting %s', order[i])
       alpha = 0.5
+
+    # choose a new color
+    color = hash(order[i]) % len(colors) # number from 0..len(colors)
+    if len(colors_seen) < len(colors):
+      while color in colors_seen:
+        color = (color + 1) % len(colors)
+    colors_seen.add(color)
+    color = colors[color] # convert to rgb
+
     if show_name and descriptions is not None and descriptions[i] != '':
-      patch_handles.append(ax.barh(sample_id, vals, color=colors[hash(order[i]) % len(colors)], alpha=alpha, align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))
+      patch_handles.append(ax.barh(sample_id, vals, color=color, alpha=alpha, align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))
     else:
-      patch_handles.append(ax.barh(sample_id, vals, color=colors[hash(order[i]) % len(colors)], alpha=alpha, align='center', left=left, label=order[i]))
+      patch_handles.append(ax.barh(sample_id, vals, color=color, alpha=alpha, align='center', left=left, label=order[i]))
     # accumulate the left-hand offsets
     left += vals
 
@@ -138,7 +149,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
 
   ax.set_yticks(sample_id)
   ax.set_yticklabels(samples)
-  ax.set_xlabel(xlabel or 'Contribution of signatures to somatic mutations')
+  ax.set_xlabel(xlabel or 'Contribution of signatures to somatic mutations (%)')
   ax.set_ylabel(ylabel or 'Sample')
   ax.set_title(title or 'Somatic mutational signatures per sample')
 

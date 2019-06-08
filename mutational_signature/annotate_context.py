@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+'''
+  adds snv_context to a vcf
+'''
 
 import argparse
 import collections
