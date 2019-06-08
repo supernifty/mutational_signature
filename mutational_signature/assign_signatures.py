@@ -155,7 +155,8 @@ def main(vcf, signatures, definition, threshold, plot):
         expected[sig] += counts[context] * prob
         
     total = sum([expected[sig] for sig in expected])
-    logging.debug('reconstruction: {}'.format(['{}: {:.2f}'.format(sig, expected[sig] / total) for sig in expected]))
+    if total > 0:
+      logging.debug('reconstruction: {}'.format(['{}: {:.2f}'.format(sig, expected[sig] / total) for sig in expected]))
 
     if plot is not None:
       logging.info('generating plot...')
