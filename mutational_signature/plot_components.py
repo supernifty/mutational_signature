@@ -64,41 +64,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
   data = list(reversed(data))
   samples = list(reversed(samples))
 
-  # now plot
-  #colors = [ '#f6597B', '#5cc45b', '#fff139', '#6373e8', '#f59251', '#e16e44', '#62e4f4', '#f052f6', '#dfff55', '#fadece', '#66a9a0', '#f6deff', '#aA7344', '#fffae8', '#901020', '#caffd3', '#909010', '#ffe8d1' ]
-  colors = [
-    '#cc5ac5',
-    '#61c350',
-    '#9358ca',
-    '#9bb932',
-    '#626cd4',
-    '#d8ab39',
-    '#5e73b8',
-    '#dc842f',
-    '#60a4da',
-    '#cd4b33', # 10
-    '#4ec584',
-    '#db3666',
-    '#3d9037',
-    '#d5509a',
-    '#69862a',
-    '#cb91d4',
-    '#b4ad4a',
-    '#98518b',
-    '#9db76f',
-    '#a44657', # 20
-    '#42c3c2',
-    '#e07a8a',
-    '#2b7650',
-    '#e38f6b',
-    '#5aad86',
-    '#995a2b',
-    '#5d8547',
-    '#c39e64',
-    '#676828',
-    '#977b1f' # 30
-  ]
-  
+  colors = {"SBS1": "#de3860", "SBS2": "#41ac2f", "SBS3": "#7951d0", "SBS4": "#73d053", "SBS5": "#b969e9", "SBS6": "#91ba2c", "SBS7a": "#b4b42f", "SBS7b": "#5276ec", "SBS7c": "#daae36", "SBS7d": "#9e40b5", "SBS8": "#43c673", "SBS9": "#dd4cb0", "SBS10a": "#3d9332", "SBS10b": "#de77dd", "SBS11": "#7bad47", "SBS12": "#9479e8", "SBS13": "#487b21", "SBS14": "#a83292", "SBS15": "#83c67d", "SBS16": "#664db1", "SBS17a": "#e18d28", "SBS17b": "#588de5", "SBS18": "#e2672a", "SBS19": "#34c7dd", "SBS20": "#cf402b", "SBS21": "#5acdaf", "SBS22": "#d74587", "SBS23": "#428647", "SBS24": "#7b51a7", "SBS25": "#b4ba64", "SBS26": "#646cc1", "SBS27": "#a27f1f", "SBS28": "#3b63ac", "SBS29": "#dca653", "SBS30": "#505099", "SBS31": "#7d8529", "SBS32": "#bf8ade", "SBS33": "#516615", "SBS34": "#b65da7", "SBS35": "#57a87a", "SBS36": "#c84249", "SBS37": "#37b5b1", "SBS38": "#a14622", "SBS39": "#58b5e1", "SBS40": "#ba6e2f", "SBS41": "#589ed8", "SBS42": "#e98261", "SBS43": "#3176ae", "SBS44": "#656413", "SBS45": "#a19fe2", "SBS46": "#756121", "SBS47": "#7e4a8d", "SBS48": "#326a38", "SBS49": "#dd8abf", "SBS50": "#1a6447", "SBS51": "#e78492", "SBS52": "#30876c", "SBS53": "#9d4d7c", "SBS54": "#919d5b", "SBS55": "#9d70ac", "SBS56": "#5b6f34", "SBS57": "#65659c", "SBS58": "#c9a865", "SBS59": "#a1455d", "SBS60": "#5e622c", "SBS84": "#b66057", "SBS85": "#dca173", "DBS1": "#855524", "DBS2": "#9f7846", "DBS3": "#7951d0", "DBS4": "#73d053", "DBS5": "#b969e9", "DBS6": "#91ba2c", "DBS7": "#3656ca", "DBS8": "#b4b42f", "DBS9": "#5276ec", "DBS10": "#daae36", "DBS11": "#9e40b5", "ID1": "#de3860", "ID2": "#41ac2f", "ID3": "#7951d0", "ID4": "#73d053", "ID5": "#b969e9", "ID6": "#91ba2c", "ID7": "#9e40b5", "ID8": "#43c673", "ID9": "#dd4cb0", "ID10": "#3d9332", "ID11": "#de77dd", "ID12": "#7bad47", "ID13": "#9479e8", "ID14": "#487b21", "ID15": "#a83292", "ID16": "#83c67d", "ID17": "#664db1", "1": "#b66057", "2": "#dca173", "3": "#855524", "4": "#9f7846", "5": "#7951d0", "6": "#73d053", "7": "#b969e9", "8": "#91ba2c", "9": "#3656ca", "10": "#b4b42f", "11": "#5276ec", "12": "#daae36", "13": "#9e40b5", "14": "#de3860", "15": "#41ac2f", "16": "#7951d0", "17": "#73d053", "18": "#b969e9", "19": "#91ba2c", "20": "#9e40b5", "21": "#43c673", "22": "#dd4cb0", "23": "#3d9332", "24": "#de77dd", "25": "#7bad47", "26": "#9479e8", "27": "#487b21", "28": "#a83292", "29": "#83c67d", "30": "#664db1"}
   
   fig = plt.figure(figsize=(24, HEIGHT_MULTIPLIER * len(samples)))
   ax = fig.add_subplot(111)
@@ -117,12 +83,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       alpha = 0.5
 
     # choose a new color
-    color = hash(order[i]) % len(colors) # number from 0..len(colors)
-    if len(colors_seen) < len(colors):
-      while color in colors_seen:
-        color = (color + 1) % len(colors)
-    colors_seen.add(color)
-    color = colors[color] # convert to rgb
+    color = colors[order[i]]
 
     if show_name and descriptions is not None and descriptions[i] != '':
       patch_handles.append(ax.barh(sample_id, vals, color=color, alpha=alpha, align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))

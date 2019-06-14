@@ -185,9 +185,12 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
   if doublets:
     if last_variant is not None and last_variant.CHROM == variant.CHROM and last_variant.POS == variant.POS - 1:
       doublet = '{}{}>{}{}'.format(last_variant.REF, variant.REF, last_variant.ALT[0], variant.ALT[0])
-      doublet = normalize_doublet(doublet)
-      counts[doublet] += 1
-      logging.debug('doublet found at %s:%s: %s', variant.CHROM, variant.POS, doublet)
+      if len(doublet) != 5:
+        logging.warn('skipping doublet %s at %s:%i', doublet, variant.CHROM, variant.POS)
+      else:
+        doublet = normalize_doublet(doublet)
+        counts[doublet] += 1
+        logging.debug('doublet found at %s:%s: %s', variant.CHROM, variant.POS, doublet)
 
 def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, doublets=False, indels=False, just_indels=False):
   logging.info('processing %s with %i filters...', vcf, len(variant_filters))
