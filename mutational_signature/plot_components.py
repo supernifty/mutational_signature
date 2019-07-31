@@ -148,12 +148,16 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
             y = 0.5 * patch.get_height() + bl[1] - 0.2
             if show_name and data[i][j] > description_threshold:
               if descriptions is not None and descriptions[j] != '':
+                # signature, description, percentage
                 y = 0.5 * patch.get_height() + bl[1] - 0.3
                 ax.text(x,y, '%s\n%s\n%d%%' % (order[j], descriptions[j], data[i][j]), ha='center')
               else:
+                # signature, percentage
                 ax.text(x,y, '%s\n%d%%' % (order[j], data[i][j]), ha='center')
             elif data[i][j] > 5:
-              ax.text(x,y, "%d%%" % (data[i][j]), ha='center')
+              # signature, percentage
+              ax.text(x,y, '%s\n%d%%' % (order[j], data[i][j]), ha='center')
+            # else nothing
   
     ax.set_yticks(sample_id)
     ax.set_yticklabels(samples)
