@@ -20,10 +20,11 @@ from pylab import rcParams
 #FIGSIZE = (16, 8)
 
 HEIGHT_MULTIPLIER = 1.8
-rcParams.update({'font.size': 16})
+WIDTH_MULTIPLIER = 0.6
 
-def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None):
+def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False):
   logging.info('reading from stdin with threshold %f and order %s...', threshold, order)
+  rcParams.update({'font.size': 16})
 
   header = next(sigs)
   logging.debug('header is %s', header)
@@ -61,64 +62,111 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     filtered.append(new_row)
   data = filtered
 
-  data = list(reversed(data))
-  samples = list(reversed(samples))
-
   colors = {"SBS1": "#de3860", "SBS2": "#41ac2f", "SBS3": "#7951d0", "SBS4": "#73d053", "SBS5": "#b969e9", "SBS6": "#91ba2c", "SBS7a": "#b4b42f", "SBS7b": "#5276ec", "SBS7c": "#daae36", "SBS7d": "#9e40b5", "SBS8": "#43c673", "SBS9": "#dd4cb0", "SBS10a": "#3d9332", "SBS10b": "#de77dd", "SBS11": "#7bad47", "SBS12": "#9479e8", "SBS13": "#487b21", "SBS14": "#a83292", "SBS15": "#83c67d", "SBS16": "#664db1", "SBS17a": "#e18d28", "SBS17b": "#588de5", "SBS18": "#e2672a", "SBS19": "#34c7dd", "SBS20": "#cf402b", "SBS21": "#5acdaf", "SBS22": "#d74587", "SBS23": "#428647", "SBS24": "#7b51a7", "SBS25": "#b4ba64", "SBS26": "#646cc1", "SBS27": "#a27f1f", "SBS28": "#3b63ac", "SBS29": "#dca653", "SBS30": "#505099", "SBS31": "#7d8529", "SBS32": "#bf8ade", "SBS33": "#516615", "SBS34": "#b65da7", "SBS35": "#57a87a", "SBS36": "#c84249", "SBS37": "#37b5b1", "SBS38": "#a14622", "SBS39": "#58b5e1", "SBS40": "#ba6e2f", "SBS41": "#589ed8", "SBS42": "#e98261", "SBS43": "#3176ae", "SBS44": "#656413", "SBS45": "#a19fe2", "SBS46": "#756121", "SBS47": "#7e4a8d", "SBS48": "#326a38", "SBS49": "#dd8abf", "SBS50": "#1a6447", "SBS51": "#e78492", "SBS52": "#30876c", "SBS53": "#9d4d7c", "SBS54": "#919d5b", "SBS55": "#9d70ac", "SBS56": "#5b6f34", "SBS57": "#65659c", "SBS58": "#c9a865", "SBS59": "#a1455d", "SBS60": "#5e622c", "SBS84": "#b66057", "SBS85": "#dca173", "DBS1": "#855524", "DBS2": "#9f7846", "DBS3": "#7951d0", "DBS4": "#73d053", "DBS5": "#b969e9", "DBS6": "#91ba2c", "DBS7": "#3656ca", "DBS8": "#b4b42f", "DBS9": "#5276ec", "DBS10": "#daae36", "DBS11": "#9e40b5", "ID1": "#de3860", "ID2": "#41ac2f", "ID3": "#7951d0", "ID4": "#73d053", "ID5": "#b969e9", "ID6": "#91ba2c", "ID7": "#9e40b5", "ID8": "#43c673", "ID9": "#dd4cb0", "ID10": "#3d9332", "ID11": "#de77dd", "ID12": "#7bad47", "ID13": "#9479e8", "ID14": "#487b21", "ID15": "#a83292", "ID16": "#83c67d", "ID17": "#664db1", "1": "#b66057", "2": "#dca173", "3": "#855524", "4": "#9f7846", "5": "#7951d0", "6": "#73d053", "7": "#b969e9", "8": "#91ba2c", "9": "#3656ca", "10": "#b4b42f", "11": "#5276ec", "12": "#daae36", "13": "#9e40b5", "14": "#de3860", "15": "#41ac2f", "16": "#7951d0", "17": "#73d053", "18": "#b969e9", "19": "#91ba2c", "20": "#9e40b5", "21": "#43c673", "22": "#dd4cb0", "23": "#3d9332", "24": "#de77dd", "25": "#7bad47", "26": "#9479e8", "27": "#487b21", "28": "#a83292", "29": "#83c67d", "30": "#664db1"}
   
-  fig = plt.figure(figsize=(24, HEIGHT_MULTIPLIER * len(samples)))
-  ax = fig.add_subplot(111)
-  patch_handles = []
-  left = np.zeros(len(samples))
-  sample_id = np.arange(len(samples))
+  if vertical:
+    import matplotlib.style
+    matplotlib.style.use('seaborn') 
 
-  colors_seen = set()
-  for i in range(len(order)): # each signature
-    vals = [row[i] for row in data] # all values for that signature
-    if highlight is None or len(highlight) == 0 or order[i] in highlight:
-      logging.info('highlighting %s', order[i])
-      alpha = 0.9
-    else:
-      logging.info('not highlighting %s', order[i])
-      alpha = 0.5
+    fig = plt.figure(figsize=(WIDTH_MULTIPLIER * len(samples), 12))
+    ax = fig.add_subplot(111)
+    patch_handles = []
 
-    # choose a new color
-    color = colors[order[i]]
+    sample_id = np.arange(len(samples))
+    width=0.3
+    bottom=[0] * len(samples)
+    for i in range(len(order)): # each signature
+      vals = [row[i] for row in data] # all values for that signature
+      if highlight is None or len(highlight) == 0 or order[i] in highlight:
+        logging.info('highlighting %s', order[i])
+        alpha = 0.9
+      else:
+        logging.info('not highlighting %s', order[i])
+        alpha = 0.5
+  
+      # choose a new color
+      color = colors[order[i]]
+      logging.debug('sample_id %s vals %s bottom %s', sample_id, vals, bottom)
 
-    if show_name and descriptions is not None and descriptions[i] != '':
-      patch_handles.append(ax.barh(sample_id, vals, color=color, alpha=alpha, align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))
-    else:
-      patch_handles.append(ax.barh(sample_id, vals, color=color, alpha=alpha, align='center', left=left, label=order[i]))
-    # accumulate the left-hand offsets
-    left += vals
+      if show_name and descriptions is not None and descriptions[i] != '':
+        patch_handles.append(ax.bar(sample_id, vals, width, bottom=bottom, color=color, alpha=alpha, label='{} - {}'.format(order[i], descriptions[i])))
+      else:
+        patch_handles.append(ax.bar(sample_id, vals, width, bottom=bottom, color=color, alpha=alpha, label=order[i]))
 
-  # go through all of the bar segments and annotate
-  for j in range(len(patch_handles)):
-    for i, patch in enumerate(patch_handles[j].get_children()):
-        if data[i][j] >= 0.01:
-          bl = patch.get_xy()
-          x = 0.5 * patch.get_width() + bl[0]
-          y = 0.5 * patch.get_height() + bl[1] - 0.2
-          if show_name and data[i][j] > description_threshold:
-            if descriptions is not None and descriptions[j] != '':
-              y = 0.5 * patch.get_height() + bl[1] - 0.3
-              ax.text(x,y, '%s\n%s\n%d%%' % (order[j], descriptions[j], data[i][j]), ha='center')
-            else:
-              ax.text(x,y, '%s\n%d%%' % (order[j], data[i][j]), ha='center')
-          elif data[i][j] > 5:
-            ax.text(x,y, "%d%%" % (data[i][j]), ha='center')
+      bottom = [bottom[i] + vals[i] for i in range(len(bottom))]
+ 
+    ax.set_xticks(sample_id)
+    ax.set_xticklabels(samples, rotation=90)
 
-  ax.set_yticks(sample_id)
-  ax.set_yticklabels(samples)
-  ax.set_xlabel(xlabel or 'Contribution of signatures to somatic mutations (%)')
-  ax.set_ylabel(ylabel or 'Sample')
-  ax.set_title(title or 'Somatic mutational signatures per sample')
+    ax.set_ylabel(ylabel or 'Contribution of signatures to somatic mutations (%)')
+    ax.set_xlabel(xlabel or 'Sample')
 
-  # place legend at right based on https://stackoverflow.com/questions/10101700/moving-matplotlib-legend-outside-of-the-axis-makes-it-cutoff-by-the-figure-box/10154763#10154763
-  handles, labels = ax.get_legend_handles_labels()
-  lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0)
-  lgd.get_frame().set_edgecolor('#000000')
-  fig.savefig(target, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    ax.set_title(title or 'Somatic mutational signatures per sample')
+  
+    # place legend at right based on https://stackoverflow.com/questions/10101700/moving-matplotlib-legend-outside-of-the-axis-makes-it-cutoff-by-the-figure-box/10154763#10154763
+    handles, labels = ax.get_legend_handles_labels()
+    lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0)
+    lgd.get_frame().set_edgecolor('#000000')
+    fig.savefig(target, bbox_extra_artists=(lgd,), bbox_inches='tight')
+
+  else: # horizontal
+    fig = plt.figure(figsize=(24, HEIGHT_MULTIPLIER * len(samples)))
+    ax = fig.add_subplot(111)
+
+    data = list(reversed(data))
+    samples = list(reversed(samples))
+
+    patch_handles = []
+    left = np.zeros(len(samples))
+    sample_id = np.arange(len(samples))
+  
+    for i in range(len(order)): # each signature
+      vals = [row[i] for row in data] # all values for that signature
+      if highlight is None or len(highlight) == 0 or order[i] in highlight:
+        logging.info('highlighting %s', order[i])
+        alpha = 0.9
+      else:
+        logging.info('not highlighting %s', order[i])
+        alpha = 0.5
+  
+      # choose a new color
+      color = colors[order[i]]
+  
+      if show_name and descriptions is not None and descriptions[i] != '':
+        patch_handles.append(ax.barh(sample_id, vals, color=color, alpha=alpha, align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))
+      else:
+        patch_handles.append(ax.barh(sample_id, vals, color=color, alpha=alpha, align='center', left=left, label=order[i]))
+      # accumulate the left-hand offsets
+      left += vals
+  
+    # go through all of the bar segments and annotate
+    for j in range(len(patch_handles)):
+      for i, patch in enumerate(patch_handles[j].get_children()):
+          if data[i][j] >= 0.01:
+            bl = patch.get_xy()
+            x = 0.5 * patch.get_width() + bl[0]
+            y = 0.5 * patch.get_height() + bl[1] - 0.2
+            if show_name and data[i][j] > description_threshold:
+              if descriptions is not None and descriptions[j] != '':
+                y = 0.5 * patch.get_height() + bl[1] - 0.3
+                ax.text(x,y, '%s\n%s\n%d%%' % (order[j], descriptions[j], data[i][j]), ha='center')
+              else:
+                ax.text(x,y, '%s\n%d%%' % (order[j], data[i][j]), ha='center')
+            elif data[i][j] > 5:
+              ax.text(x,y, "%d%%" % (data[i][j]), ha='center')
+  
+    ax.set_yticks(sample_id)
+    ax.set_yticklabels(samples)
+    ax.set_xlabel(xlabel or 'Contribution of signatures to somatic mutations (%)')
+    ax.set_ylabel(ylabel or 'Sample')
+    ax.set_title(title or 'Somatic mutational signatures per sample')
+  
+    # place legend at right based on https://stackoverflow.com/questions/10101700/moving-matplotlib-legend-outside-of-the-axis-makes-it-cutoff-by-the-figure-box/10154763#10154763
+    handles, labels = ax.get_legend_handles_labels()
+    lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0)
+    lgd.get_frame().set_edgecolor('#000000')
+    fig.savefig(target, bbox_extra_artists=(lgd,), bbox_inches='tight')
+  plt.close('all')
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Plot signature breakdown')
@@ -132,6 +180,7 @@ if __name__ == '__main__':
   parser.add_argument('--xlabel', required=False, help='x axis label')
   parser.add_argument('--ylabel', required=False, help='y axis label')
   parser.add_argument('--title', required=False, help='title')
+  parser.add_argument('--vertical', action='store_true', help='plot vertically')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -139,4 +188,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title)
+  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical)
