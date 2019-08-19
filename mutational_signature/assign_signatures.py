@@ -19,6 +19,9 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from pylab import rcParams
 rcParams['figure.figsize'] = 16, 10
+import matplotlib.patches
+
+DPI=300
 
 import cyvcf2
 
@@ -43,6 +46,12 @@ def plot_sbs_signature(vals, target, contexts, sigs):
   x = range(width)
   f,ax = plt.subplots(1)
 
+  # background colours
+  for idx, c in enumerate(color[::16]):
+    logging.info(c)
+    rect = matplotlib.patches.Rectangle((idx * 16, 0), (idx + 1) * 16, max(ys), facecolor=c, alpha=0.1)
+    ax.add_patch(rect)
+
   if contexts is None: # no sigs
     bars = ax.bar(x, ys)
     for h in range(len(x)):
@@ -63,6 +72,8 @@ def plot_sbs_signature(vals, target, contexts, sigs):
 
   ax.set_xticks(x)
   ax.set_xticklabels([x.split(' ')[1] for x in xs], minor=False, rotation=90)
+  ax.set_xlabel('Context')
+  ax.set_ylabel('Variant Count')
   ax.legend()
   plt.ylim(0, ylim)
   plt.xlim(0, width)
@@ -72,7 +83,7 @@ def plot_sbs_signature(vals, target, contexts, sigs):
   ax2.set_xticks([ width * (x/6.0 + 1/12.0) for x in range(6) ])
   ax2.set_xticklabels(['C>A', 'C>G', 'C>T', 'T>A', 'T>C', 'T>G'])
 
-  plt.savefig(target)
+  plt.savefig(target, dpi=DPI)
 
 def main(vcf, signatures, definition, threshold, plot):
   logging.info('starting...')

@@ -1,7 +1,7 @@
-Signature	Summary
+Signature	Summary	Mutation
 SBS1	Aging
 SBS2	AID/APOBEC
-SBS3	Defective HR (BRCA)
+SBS3	Defective HR (BRCA)	Flat
 SBS4	Tobacco smoking
 SBS5	Aging
 SBS6	MMRd
@@ -42,7 +42,7 @@ SBS35	Platinum treatment
 SBS36	MUTYH (BER)
 SBS37	?
 SBS38	UV?
-SBS39	?
+SBS39	?	C>G enriched
 SBS40	?
 SBS41	?
 SBS42	Haloalkane exposure
@@ -77,13 +77,13 @@ DBS8	?
 DBS9	?
 DBS10	MMRd
 DBS11	APOBEC?
-ID1	MMRd tendency
-ID2	MMRd tendency
+ID1	MMRd tendency	5+ homopolymer 1bp T insertion
+ID2	MMRd tendency	6+ homopolymer 1bp T deletion
 ID3	Tobacco smoking
 ID4	?
 ID5	Age
 ID6	Defective HR (BRCA)
-ID7	MMRd
+ID7	MMRd	1bp homopolymer deletions, mainly longer 
 ID8	?
 ID9	?
 ID10	?
