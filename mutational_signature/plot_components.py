@@ -23,12 +23,12 @@ HEIGHT_MULTIPLIER = 1.8
 WIDTH_MULTIPLIER = 0.6
 DPI=300
 
-def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_cols=1):
+def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_cols=1, denormalize=False):
   logging.info('reading from stdin with threshold %f and order %s...', threshold, order)
   rcParams.update({'font.size': fontsize})
 
   header = next(sigs)
-  logging.debug('header is %s', header)
+  logging.info('header is %s', header)
 
   if order is None:
     order = header[1:]
@@ -37,18 +37,24 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
 
   samples = []
   data = []
+  variants = []
   seen = set()
   seen_index = set()
 
-  for row in sigs:
+  for row in sigs: # each line
     xs = []
-    samples.append(row[0])
-    for i, o in enumerate(order):
+    samples.append(row[0]) # assume sample name first column
+    for i, o in enumerate(order): # each signature
       val = float(row[header.index(o)])
-      xs.append(val * 100)
+      xs.append(val)
       if val > threshold:
         seen_index.add(i)
     data.append(xs)
+    # denormalize
+    if denormalize:
+      variants.append(float(row[header.index('Variants')]))
+    else:
+      variants.append(100.0) # do not consider variant count
 
   logging.info('saw %i sigs...', len(seen_index))
 
@@ -82,7 +88,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     width=0.8
     bottom=[0] * len(samples)
     for i in range(len(order)): # each signature
-      vals = [row[i] for row in data] # all values for that signature
+      vals = [row[i] * variant for row, variant in zip(data, variants)] # all values for that signature
       if highlight is None or len(highlight) == 0 or order[i] in highlight:
         logging.info('highlighting %s', order[i])
         alpha = 0.9
@@ -104,10 +110,14 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     ax.set_xticks(sample_id)
     ax.set_xticklabels(samples, rotation=90)
 
-    ax.set_ylabel(ylabel or 'Contribution of signatures to somatic mutations (%)')
+    if denormalize:
+      ax.set_ylabel(ylabel or 'Contribution of signatures to somatic mutations (variants)')
+    else:
+      ax.set_ylabel(ylabel or 'Contribution of signatures to somatic mutations (%)')
     ax.set_xlabel(xlabel or 'Sample')
 
-    ax.set_ylim(0, 100)
+    if not denormalize:
+      ax.set_ylim(0, 100)
 
     ax.set_title(title or 'Somatic mutational signatures per sample')
   
@@ -209,6 +219,7 @@ if __name__ == '__main__':
   parser.add_argument('--title', required=False, help='title')
   parser.add_argument('--fontsize', required=False, default=12, type=int, help='plot font size')
   parser.add_argument('--vertical', action='store_true', help='plot vertically')
+  parser.add_argument('--denormalize', action='store_true', help='do not constrain to 100%')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -216,4 +227,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_cols)
+  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_cols, args.denormalize)

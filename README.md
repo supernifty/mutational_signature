@@ -54,6 +54,16 @@ Compare sets of signatures for similarity:
 python mutational_signature/compare_signatures.py --signatures data/signatures_cosmic_v3_sbs.txt --signatures2 data/wes-crc.csv
 ```
 
+Count available contexts for potential exposure adjustment:
+```
+python mutational_signature/count_contexts.py --genome genome.fa --bed regions.wgs.bed > opportunity.sbs.wgs.tsv
+```
+
+Adjust counts
+```
+python mutational_signature/adjust_counts.py --adjust_from opportunity.sbs.cog.tsv --adjust_to opportunity.sbs.exome.tsv --verbose < sample.count
+```
+
 ## Functionality
 * combine_counts: for multiple count files, combine into a single tsv
 * combine_signatures: for multiple signature files, combine into a single tsv

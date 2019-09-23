@@ -9,12 +9,17 @@ import logging
 import sys
 
 import numpy as np
+import scipy.stats
 
 def cosine(x, y):
   similarity = x.dot(y) / (np.linalg.norm(x) * np.linalg.norm(y))
   return similarity
 
-def compare(signatures, signatures2, out):
+def pearson(x, y):
+  similarity =  scipy.stats.pearsonr(x, y) # returns correlation, p-value
+  return similarity[0]
+
+def compare(signatures, signatures2, measure, out):
   logging.info('processing %s...', signatures)
 
   names1 = []
@@ -68,27 +73,35 @@ def compare(signatures, signatures2, out):
     logging.debug('%i signatures in second dataset', len(rows2))
 
   # pairwise distance
-  distances = np.zeros((len(names1),len(names2)), dtype=float)
+  similarities = np.zeros((len(names1),len(names2)), dtype=float)
   for aid, arow in enumerate(rows1):
     for bid, brow in enumerate(rows2):
-      distance = cosine(arow, brow)
-      distances[aid][bid] = distance
+      logging.debug('%s vs %s: %i vs %i len', aid, bid, len(arow), len(brow))
+      if measure == 'pearson':
+        similarity = pearson(arow, brow)
+      elif measure == 'cosine':
+        similarity = cosine(arow, brow)
+      else:
+        logging.warn('unrecognised measure %s', measure)
+        similarity = cosine(arow, brow)
+      similarities[aid][bid] = similarity
 
   # print all
   sys.stdout.write('Sig\t{}\tSimilar Signatures\n'.format('\t'.join(names2)))
   for row, name in enumerate(names1):
-    best = np.argsort(distances[row])[::-1]
-    similar = '{} ({:.2f}) {} {}'.format(names2[best[0]], distances[row][best[0]], names2[best[1]], names2[best[2]])
-    sys.stdout.write('{}\t{}\t{}\n'.format(name, '\t'.join(['{:.2f}'.format(x) for x in distances[row]]), similar))
+    best = np.argsort(similarities[row])[::-1]
+    similar = '{} ({:.2f}) {} {}'.format(names2[best[0]], similarities[row][best[0]], names2[best[1]], names2[best[2]])
+    sys.stdout.write('{}\t{}\t{}\n'.format(name, '\t'.join(['{:.2f}'.format(x) for x in similarities[row]]), similar))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='compare signatures')
   parser.add_argument('--signatures', required=True, help='signatures')
   parser.add_argument('--signatures2', required=False, help='second group of signatures')
+  parser.add_argument('--measure', required=False, default='cosine', help='cosine or pearson')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
-  compare(args.signatures, args.signatures2, sys.stdout)
+  compare(args.signatures, args.signatures2, args.measure, sys.stdout)

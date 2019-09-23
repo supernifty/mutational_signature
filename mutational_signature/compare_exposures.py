@@ -9,6 +9,7 @@ import logging
 import sys
 
 import numpy as np
+import scipy.stats
 
 import matplotlib
 matplotlib.use('Agg')
@@ -19,7 +20,11 @@ def cosine(x, y):
   similarity = x.dot(y) / (np.linalg.norm(x) * np.linalg.norm(y))
   return similarity
 
-def compare(x_exposures, y_exposures, out, plot, x_label, y_label, title, log):
+def pearson(x, y):
+  similarity =  scipy.stats.pearsonr(x, y) # returns correlation, p-value
+  return similarity[0]
+
+def compare(x_exposures, y_exposures, out, plot, x_label, y_label, title, log, measure):
 
   exclude = ('Error', 'Mutations')
   seen = set()
@@ -46,7 +51,13 @@ def compare(x_exposures, y_exposures, out, plot, x_label, y_label, title, log):
   ls = sorted(seen)
   xs = [x[k] + 0.001 for k in ls]
   ys = [y[k] + 0.001 for k in ls]
-  similarity = cosine(np.array(xs), np.array(ys))
+  if measure == 'cosine':
+    similarity = cosine(np.array(xs), np.array(ys))
+  elif measure == 'pearson':
+    similarity = pearson(np.array(xs), np.array(ys))
+  else:
+    logging.warn('unrecognized measure %s', measure)
+    similarity = cosine(np.array(xs), np.array(ys))
   out.write('{}\t{}\t{}\n'.format(x_label, y_label, similarity))
 
   # scatter
@@ -82,11 +93,12 @@ if __name__ == '__main__':
   parser.add_argument('--title', required=False, help='title')
   parser.add_argument('--plot', required=False, help='correlation plot')
   parser.add_argument('--log', action='store_true', help='log scale')
+  parser.add_argument('--measure', required=False, default='cosine', help='cosine or pearson')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
-  compare(args.x_exposures, args.y_exposures, sys.stdout, args.plot, args.x_label, args.y_label, args.title, args.log)
+  compare(args.x_exposures, args.y_exposures, sys.stdout, args.plot, args.x_label, args.y_label, args.title, args.log, args.measure)
 
