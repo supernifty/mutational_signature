@@ -21,7 +21,7 @@ COMP = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 COMP_TX = {'+': '-', '-': '+', None: None}
 INDEL_COMP = {'A': 'T', 'C': 'C', 'G': 'C', 'T': 'T'} # normalize to C or T
 
-EXCLUDE_UTR=True
+EXCLUDE_UTR=True # transcription bias
 
 def normalize_sbs(v, strand_tx, strand_exon):
   '''
@@ -49,11 +49,11 @@ def update_chroms(required, chroms, genome, next_chrom):
     pull the entire chromosome into memory
   '''
   seq = []
-  for line in genome:
+  for linenum, line in enumerate(genome):
     line = line.strip('\n')
     if line.startswith('>'):
       if next_chrom is None: # first line of file
-        next_chrom = line[1:].split(' ')[0]
+        next_chrom = line[1:].split(' ')[0].replace('chr', '')
         logging.debug('reading chrom %s from genome...', next_chrom)
       else:
         # remove previous chromosomes
@@ -61,14 +61,16 @@ def update_chroms(required, chroms, genome, next_chrom):
         seq = []
         logging.info('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
         if required == next_chrom:
-          next_chrom = line[1:].split(' ')[0]
+          next_chrom = line[1:].split(' ')[0].replace('chr', '')
           logging.debug('required chrom %s found', next_chrom)
           return next_chrom
         else:
-          next_chrom = line[1:].split(' ')[0]
+          next_chrom = line[1:].split(' ')[0].replace('chr', '')
           logging.debug('reading chrom %s from genome...', next_chrom)
     else:
       seq.append(line)
+    if linenum % 100000 == 0:
+      logging.debug('processed %i lines of genome...', linenum)
 
   # end of file
   chroms[next_chrom] = ''.join(seq)
@@ -88,9 +90,10 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     if len(intersections) == 0:
       logging.debug('%s:%i is not coding', variant.CHROM, variant.POS)
     elif len(intersections) > 1:
-      logging.debug('multiple intersections at %s:%i', variant.CHROM, variant.POS) # can't decide
+      logging.debug('%i intersections at %s:%i', len(intersections), variant.CHROM, variant.POS) # can't decide
       # pick the first
       exon_strand = list(intersections)[0][2]
+      logging.debug('%i intersections at %s:%i: first is %s', len(intersections), variant.CHROM, variant.POS, exon_strand) # can't decide
     else:
       exon_strand = list(intersections)[0][2]
 
@@ -99,8 +102,9 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     if len(intersections) == 0:
       logging.debug('%s:%i is not coding', variant.CHROM, variant.POS)
     elif len(intersections) > 1:
-      logging.debug('multiple intersections at %s:%i', variant.CHROM, variant.POS) # can't decide
+      logging.debug('%i multiple intersections at %s:%i', len(intersections), variant.CHROM, variant.POS) # can't decide
       tx_strand = list(intersections)[0][2]
+      logging.debug('%i multiple intersections at %s:%i: first is %s', len(intersections), variant.CHROM, variant.POS, tx_strand) # can't decide
     else:
       tx_strand = list(intersections)[0][2]
 
@@ -123,13 +127,20 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     # measure repeat length
     repeats = 0
     if del_length > 0: # deletion
-      # deletions look like TAAA -> A POS is where the T is
-      deleted_sequence = variant.REF[1:]
+      if len(variant.ALT[0]) == 0:
+        # deletions look like TA -> - e.g. in TCGA
+        deleted_sequence = variant.REF
+      else:  
+        # deletions look like TAAA -> T POS is where the T is
+        deleted_sequence = variant.REF[len(variant.ALT[0]):]
+      logging.debug('deleted sequence is %s from %s to %s', deleted_sequence, variant.REF, variant.ALT[0])
       # first look for ongoing repeated sequence. POS-1 puts us at the T
-      current_pos = variant.POS - 1 + 1 + len(deleted_sequence)
+      current_pos = variant.POS + len(variant.ALT[0]) - 1 + len(deleted_sequence)
       while chroms[variant.CHROM][current_pos:current_pos + len(deleted_sequence)] == deleted_sequence:
         current_pos += len(deleted_sequence)
         repeats += 1
+        if repeats > 10000:
+          break
 
       if del_length == 1:
         category['repeats'] = '5+' if repeats >= 5 else repeats
@@ -140,19 +151,19 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
           microhomology = 0
           # first look to the right
           for pos in range(0, len(deleted_sequence)):
-            if chroms[variant.CHROM][variant.POS - 1 + 1 + len(deleted_sequence) + pos] == deleted_sequence[pos]:
+            if chroms[variant.CHROM][variant.POS + len(variant.ALT[0]) - 1 + len(deleted_sequence) + pos] == deleted_sequence[pos]:
               microhomology += 1
             else:
               break
           # now look to the left
           for pos in range(len(deleted_sequence) - 1, -1, -1):
-            if chroms[variant.CHROM][variant.POS - 1 + 1 - len(deleted_sequence) + pos] == deleted_sequence[pos]:
+            if chroms[variant.CHROM][variant.POS + len(variant.ALT[0]) - 1 - len(deleted_sequence) + pos] == deleted_sequence[pos]:
               microhomology += 1
             else:
               break
 
           if microhomology >= del_length:
-            logging.warn('Microhomology calculation went wrong at %s:%i %i', variant.CHROM, variant.POS, microhomology)
+            logging.warn('Microhomology calculation went wrong at %s:%i %i del length %i del sequence %s', variant.CHROM, variant.POS, microhomology, del_length, deleted_sequence)
           
           if microhomology > 0:
             category['repeats'] = '5+' if microhomology >= 5 else microhomology
@@ -165,12 +176,18 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
           category['content'] = 'repeats'
 
     else: # insertion
-      # insertions look like G -> GCA. POS is where the G is
-      inserted_sequence = variant.ALT[0][1:]
-      current_pos = variant.POS - 1 + 1
+      if len(variant.REF) == 0:
+        # ref used to be -
+        inserted_sequence = variant.ALT[0]
+      else:
+        # insertions look like G -> GCA. POS is where the G is
+        inserted_sequence = variant.ALT[0][len(variant.REF):]
+      current_pos = variant.POS + len(variant.REF) - 1
       while chroms[variant.CHROM][current_pos:current_pos + len(inserted_sequence)] == inserted_sequence:
         current_pos += len(inserted_sequence)
         repeats += 1
+        if repeats > 10000:
+          break
       category['repeats'] = '5+' if repeats >= 5 else repeats
       if del_length == -1:
         category['content'] = INDEL_COMP[inserted_sequence]
@@ -238,11 +255,11 @@ def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, do
 
   next_chrom = None
 
-  vcf_in = cyvcf2.VCF(vcf)
   last_variant = None
+  vcf_in = cyvcf2.VCF(vcf)
   for line, variant in enumerate(vcf_in):
     if variant.CHROM not in chroms_seen:
-      logging.info('chrom %s seen in vcf', variant.CHROM)
+      logging.debug('chrom %s seen in vcf', variant.CHROM)
       next_chrom = update_chroms(variant.CHROM, chroms, genome_fh, next_chrom)
       chroms_seen.add(variant.CHROM)
 
@@ -301,10 +318,10 @@ def read_transcripts(transcripts):
   bases = 0
   txbases = 0
   #bin    name    chrom   strand  txStart txEnd   cdsStart        cdsEnd  exonCount       exonStarts      exonEnds        score   name2   cdsStartStat    cdsEndStat      exonFrames
-  for row in csv.DictReader(gzip.open(transcripts, 'rt'), delimiter='\t'):
+  for rowline, row in enumerate(csv.DictReader(gzip.open(transcripts, 'rt'), delimiter='\t')):
     chrom = row['chrom'].replace('chr', '')
     if chrom not in tree:
-      logging.info('added %s to transcripts. %i exon bases and %i transcript bases so far', chrom, bases, txbases)
+      logging.debug('added %s to transcripts. %i exon bases and %i transcript bases so far', chrom, bases, txbases)
       tree[chrom] = intervaltree.IntervalTree()
       txtree[chrom] = intervaltree.IntervalTree()
     txtree[chrom][int(row['txStart']):int(row['txEnd'])] = row['strand']
@@ -321,11 +338,13 @@ def read_transcripts(transcripts):
       else:
         tree[chrom][start:end] = row['strand']
         bases += end - start
+    if rowline % 1000 == 0:
+      logging.debug('processed %i lines...', rowline)
   logging.info('reading %s: done with %i exon bases and %i tx bases', transcripts, bases, txbases)
   return txtree, tree
 
-def count(genome_fh, vcf, out=None, chroms=None, variant_filter=None, doublets=False, indels=False, just_indels=False, transcripts_fn=None):
-  logging.info('processing %s...', vcf)
+def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublets=False, indels=False, just_indels=False, transcripts_fn=None):
+  logging.info('processing vcf...')
 
   if chroms is None:
     chroms = {}
@@ -344,11 +363,10 @@ def count(genome_fh, vcf, out=None, chroms=None, variant_filter=None, doublets=F
   next_chrom = None
   filtered = 0
 
-  vcf_in = cyvcf2.VCF(vcf)
   last_variant = None
   for line, variant in enumerate(vcf_in):
     if variant.CHROM not in chroms_seen:
-      logging.info('chrom %s seen in vcf', variant.CHROM)
+      logging.debug('chrom %s seen in vcf', variant.CHROM)
       next_chrom = update_chroms(variant.CHROM, chroms, genome_fh, next_chrom)
       chroms_seen.add(variant.CHROM)
 
@@ -363,7 +381,7 @@ def count(genome_fh, vcf, out=None, chroms=None, variant_filter=None, doublets=F
     if (line + 1) % 100000 == 0:
       logging.debug('processed %i lines. current counts: %s...', line + 1, ' '.join(['{}:{}'.format(k, counts[k]) for k in counts]))
 
-  logging.info('processing %s: filtered %i. included %i. done', vcf, filtered, sum([counts[k] for k in counts]))
+  logging.info('processing vcf: filtered %i. included %i. done', filtered, sum([counts[k] for k in counts]))
 
   # write out results
   total_count = sum([counts[v] for v in counts])
@@ -406,10 +424,43 @@ def count(genome_fh, vcf, out=None, chroms=None, variant_filter=None, doublets=F
 
   return {'chroms': chroms, 'counts': counts, 'total': total_count}
 
+def get_value(header, col, row):
+  return row[header.index(col)]
+
+def maf_to_vcf(maf, sample):
+
+  Variant = collections.namedtuple('Variant', 'CHROM POS REF ALT')
+
+  # enumeration a maf into a variant
+  header = None
+  for line, row in enumerate(csv.reader(gzip.open(maf, 'rt'), delimiter='\t')):
+    if line % 1000 == 0:
+      logging.debug('processed %i lines of %s...', line, maf)
+
+    if row[0].startswith('#'):
+      continue
+    if header is None:
+      header = row
+      continue
+
+    #Hugo_Symbol     Entrez_Gene_Id  Center  NCBI_Build      Chromosome      Start_Position  End_Position    Strand  Variant_Classification  Variant_Type    Reference_Allele        Tumor_Seq_Allele1       Tumor_Seq_Allele2       dbSNP_RS        dbSNP_Val_Status        Tumor_Sample_Barcode    Matched_Norm_Sample_Barcode     Match_Norm_Seq_Allele1  Match_Norm_Seq_Allele2  Tumor_Validation_Allele1        Tumor_Validation_Allele2        Match_Norm_Validation_Allele1   Match_Norm_Validation_Allele2   Verification_Status     Validation_Status       Mutation_Status Sequencing_Phase        Sequence_Source Validation_Method       Score   BAM_File        Sequencer       Tumor_Sample_UUID       Matched_Norm_Sample_UUID        HGVSc   HGVSp   HGVSp_Short     Transcript_ID   Exon_Number     t_depth t_ref_count     t_alt_count     n_depth n_ref_count     n_alt_count     all_effects     Allele  Gene    Feature Feature_type    One_Consequence Consequence     cDNA_position   CDS_position    Protein_position        Amino_acids Codons  Existing_variation      ALLELE_NUM      DISTANCE        TRANSCRIPT_STRAND       SYMBOL  SYMBOL_SOURCE   HGNC_ID BIOTYPE CANONICAL       CCDS    ENSP    SWISSPROT       TREMBL  UNIPARC RefSeq  SIFT    PolyPhen        EXON    INTRON  DOMAINS GMAF    AFR_MAF AMR_MAF ASN_MAF EAS_MAF EUR_MAF SAS_MAF AA_MAF  EA_MAF  CLIN_SIG        SOMATIC PUBMED  MOTIF_NAME      MOTIF_POS       HIGH_INF_POS    MOTIF_SCORE_CHANGE      IMPACT  PICK    VARIANT_CLASS   TSL     HGVS_OFFSET     PHENO   MINIMISED       ExAC_AF ExAC_AF_Adj     ExAC_AF_AFR     ExAC_AF_AMR     ExAC_AF_EAS     ExAC_AF_FIN     ExAC_AF_NFE     ExAC_AF_OTH     ExAC_AF_SAS     GENE_PHENO      FILTER  CONTEXT src_vcf_id      tumor_bam_uuid  normal_bam_uuid case_id GDC_FILTER      COSMIC  MC3_Overlap     GDC_Validation_Status
+
+    row_sample = get_value(header, "Tumor_Sample_Barcode", row)
+    if sample is not None and row_sample != sample:
+      continue
+
+    chrom = get_value(header, "Chromosome", row).replace('chr', '')
+    pos = int(get_value(header, "Start_Position", row))
+    ref = get_value(header, "Reference_Allele", row).replace('-', '')
+    alt = get_value(header, "Tumor_Seq_Allele2", row).replace('-', '')
+
+    yield Variant(chrom, pos, ref, (alt,))
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')
   parser.add_argument('--genome', required=True, help='reference genome')
-  parser.add_argument('--vcf', required=True, help='vcf')
+  parser.add_argument('--vcf', required=True, help='vcf or maf')
+  parser.add_argument('--maf_sample', required=False, help='vcf is actually a maf with sample of interest')
   parser.add_argument('--doublets', action='store_true', help='count doublets')
   parser.add_argument('--indels', action='store_true', help='count indels')
   parser.add_argument('--just_indels', action='store_true', help='count only indels')
@@ -420,4 +471,9 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
-  count(genome_fh=open(args.genome, 'r'), vcf=args.vcf, out=sys.stdout, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, transcripts_fn=args.transcripts)
+
+  if args.maf_sample is not None:
+    vcf_in = maf_to_vcf(args.vcf, args.maf_sample)
+  else:
+    vcf_in = cyvcf2.VCF(args.vcf)
+  count(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=sys.stdout, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, transcripts_fn=args.transcripts)

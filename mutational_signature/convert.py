@@ -79,6 +79,32 @@ def main(conversion):
     for sig in sorted(result.keys()):
       sys.stdout.write('{}\t{}\n'.format(sig, '\t'.join([result[sig][context] for context in contexts_list])))
 
+  elif conversion == 'sbstx':
+    # Strand,Type,Subtype,SBS1,SBS2,SBS3,SBS4,SBS5,SBS6,SBS7a,SBS7b,SBS7c,SBS7d,SBS8,SBS9,SBS10a,SBS10b,SBS11,SBS12,SBS13,SBS14,SBS15,SBS16,SBS17a,SBS17b,SBS18,SBS19,SBS20,SBS21,SBS22,SBS23-E,SBS24,SBS25-E,SBS26,SBS27-E,SBS28,SBS29-E,SBS30,SBS31,SBS32,SBS33,SBS34,SBS35,SBS36,SBS37,SBS38,SBS39,SBS40,SBS41,SBS42-E,SBS43,SBS44,SBS45-E,SBS46-E,SBS47,SBS48,SBS49,SBS50,SBS51,SBS52,SBS53,SBS54,SBS55,SBS56,SBS57,SBS58,SBS59-E,SBS60
+    # U,C>A,ACA,0.002428978,1.52E-05,0.0084202,0.013198985,0.005920439,4.31E-05,0.000112008,0.000739051,0.001299453,0.000542596,0.014899119,0.000338971,0.000649837,0.00011401,0.0002262,0.003165023,0.00070077,0.000223899,0,0.005121873,0.002103173,0.000979044,0.023890022,0.00326593,0.002635085,0.000134902,0.002757404,0.001646329,0.008658196,0.002518386,0.00140495,0.000665657,0.000698814,0.015190625,0.004706682,0.004562547,0.004733878,0.000736242,0.001664096,0.009406096,0.011051821,0.002345625,0.001423934,0.009894456,0.010829197,0.000695961,0.002380018,0.007570297,0.001835964,0.001735395,0.001315841,0.047842405,0.009351833,0.00788947,0.054581454,0.037635487,0.001461495,0.007468025,0.002856412,0.005105252,0.008890439,0.008272066,0.024372478,0.006436883,0.001256248
+    # 
+    # target
+    # Sig     ACAAU    ACACU    ...
+    #Signature.1     0.011098326166  0.009149340734  0.001490070468  ...
+    header = sys.stdin.readline().strip('\r\n').split(',')
+  
+    result = collections.defaultdict(dict)
+    contexts = set()
+    for line in sys.stdin:
+      fields = line.strip('\r\n').split(',')
+      context = '{}{}{}{}{}'.format(fields[2][0], fields[2][1], fields[1][2], fields[2][2], fields[0]) # C>A,ACA => ACAA
+      contexts.add(context)
+      for idx, value in enumerate(fields[3:]):
+        result[header[idx + 3]][context] = value
+  
+    logging.info('read %i contexts', len(contexts))
+    
+    # write in new format
+    contexts_list = sorted(list(contexts))
+    sys.stdout.write('{}\t{}\n'.format('Sig', '\t'.join(contexts_list)))
+    for sig in sorted(result.keys()):
+      sys.stdout.write('{}\t{}\n'.format(sig, '\t'.join([result[sig][context] for context in contexts_list])))
+
   else:
     logging.warn('unrecognized conversion')
   
@@ -86,7 +112,7 @@ def main(conversion):
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Assess MSI')
-  parser.add_argument('--conversion', help='specify conversion type sbs db id')
+  parser.add_argument('--conversion', help='specify conversion type sbs db id sbstx')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:

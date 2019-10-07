@@ -127,7 +127,7 @@ def basin_hopping_solver(A, b, metric, max_sigs):
   return result
 
 
-def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_sigs, context_cutoff, error_contribution=False):
+def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_sigs, context_cutoff, error_contribution=False, strand=False):
   logging.info('starting...')
 
   if seed is not None:
@@ -142,10 +142,13 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
     fields = line.strip('\n\r').split('\t')
     if first:
       first = False
-      if '>' in fields[1] or len(fields[1]) != 4:
+      if '>' in fields[1] or (strand and len(fields[1]) != 5 or not strand and len(fields[1]) != 4):
         signature_classes = fields[1:]
       else: # convert from abcd -> abd>c
-        signature_classes = ['{}{}{}>{}'.format(f[0], f[1], f[3], f[2]) for f in fields[1:]]
+        if strand:
+          signature_classes = ['{}{}{}>{}{}'.format(f[0], f[1], f[3], f[2], f[4]) for f in fields[1:]]
+        else:
+          signature_classes = ['{}{}{}>{}'.format(f[0], f[1], f[3], f[2]) for f in fields[1:]]
       logging.debug('%i signature classes: %s...', len(signature_classes), signature_classes[:3])
       A = np.empty((0, len(signature_classes)), float)
       continue
@@ -165,8 +168,9 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
   # make target (b = observed_classes)
   b = [0] * len(signature_classes) # i.e. 96
 
-  # read the count percentages
-
+  # read the counts
+  # Variation Count Probability CodingTx NonCodingTx TxP   CodingExon NonCodingExon   ExonP
+  # ACA>A     3     0.001       1        2           1.000 0          1               1.000
   first = True
   total_count = 0
   excluded_signatures = set()
@@ -178,13 +182,31 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
     if line.startswith('#'):
       continue
     fields = line.strip('\n').split('\t')
-    if fields[0] not in signature_classes:
-      logging.info('context %s not in signature definitions', fields[0])
-      continue
-    signature_index = signature_classes.index(fields[0])
-    b[signature_index] = float(fields[1]) # counts
-    #b[signature_index] = float(fields[2]) # percentage
-    total_count += int(fields[1])
+    if strand and len(fields) > 4:
+      # transcribed
+      signature = '{}T'.format(fields[0])
+      value = float(fields[3])
+      if signature not in signature_classes:
+        logging.debug('context %s not in signature definitions', signature)
+        continue
+      signature_index = signature_classes.index(signature)
+      b[signature_index] = value # counts
+      total_count += int(value)
+      
+      # untranscribed
+      signature = '{}U'.format(fields[0])
+      value = float(fields[4])
+      signature_index = signature_classes.index(signature)
+      b[signature_index] = value # counts
+      total_count += int(value)
+    else:
+      if fields[0] not in signature_classes:
+        logging.debug('context %s not in signature definitions', fields[0])
+        continue
+      signature_index = signature_classes.index(fields[0])
+      b[signature_index] = float(fields[1]) # counts
+      #b[signature_index] = float(fields[2]) # percentage
+      total_count += int(fields[1])
 
     # check for excluded signatures
     if int(fields[1]) == 0:
@@ -280,6 +302,7 @@ if __name__ == '__main__':
   parser.add_argument('--error_contribution', action='store_true', help='show contribution of each context to error')
   parser.add_argument('--seed', required=False, type=int, help='random number seed for reproducibility')
   parser.add_argument('--evaluate', required=False, help='evaluate a mutational profile instead of calculating')
+  parser.add_argument('--strand', action='store_true', help='strand based signatures')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -287,4 +310,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  decompose(args.signatures, open(args.counts, 'r'), sys.stdout, args.metric, args.seed, args.evaluate, args.solver, args.max_sigs, args.context_cutoff, args.error_contribution)
+  decompose(args.signatures, open(args.counts, 'r'), sys.stdout, args.metric, args.seed, args.evaluate, args.solver, args.max_sigs, args.context_cutoff, args.error_contribution, args.strand)
