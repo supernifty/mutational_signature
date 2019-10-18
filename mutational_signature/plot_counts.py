@@ -20,7 +20,10 @@ def plot(counts, target):
     if first:
       first = False
       continue
-    v, count, probability = line.strip('\n').split('\t')
+    if line.count('\t') > 1:
+      v, count, probability = line.strip('\n').split('\t')
+    else:
+      v, probability = line.strip('\n').split('\t')
     variation = '{}>{} {}'.format(v[1], v[4], v[0:3])
     vals[variation] = float(probability)
 

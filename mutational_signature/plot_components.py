@@ -129,7 +129,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     else:
       lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01, 1.0), borderaxespad=0, ncol=legend_cols)
     lgd.get_frame().set_edgecolor('#000000')
-    fig.savefig(target, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    fig.savefig(target, transparent=True, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
   else: # horizontal
     figure_width = figure_width or 24
@@ -196,7 +196,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     handles, labels = ax.get_legend_handles_labels()
     lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0)
     lgd.get_frame().set_edgecolor('#000000')
-    fig.savefig(target, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    fig.savefig(target, transparent=True, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
   plt.close('all')
 
 if __name__ == '__main__':
