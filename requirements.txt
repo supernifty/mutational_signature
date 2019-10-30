@@ -1,3 +1,5 @@
+numpy
+cython
 cyvcf2
 intervaltree
 matplotlib

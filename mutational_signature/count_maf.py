@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+'''
+  deprecated. use count.py
+'''
 
 import argparse
 import collections

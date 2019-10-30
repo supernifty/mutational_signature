@@ -427,7 +427,7 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
 def get_value(header, col, row):
   return row[header.index(col)]
 
-def maf_to_vcf(maf, sample):
+def maf_to_vcf(maf, sample, sample_col, chrom_col, pos_col, ref_col, alt_col):
 
   Variant = collections.namedtuple('Variant', 'CHROM POS REF ALT')
 
@@ -445,14 +445,14 @@ def maf_to_vcf(maf, sample):
 
     #Hugo_Symbol     Entrez_Gene_Id  Center  NCBI_Build      Chromosome      Start_Position  End_Position    Strand  Variant_Classification  Variant_Type    Reference_Allele        Tumor_Seq_Allele1       Tumor_Seq_Allele2       dbSNP_RS        dbSNP_Val_Status        Tumor_Sample_Barcode    Matched_Norm_Sample_Barcode     Match_Norm_Seq_Allele1  Match_Norm_Seq_Allele2  Tumor_Validation_Allele1        Tumor_Validation_Allele2        Match_Norm_Validation_Allele1   Match_Norm_Validation_Allele2   Verification_Status     Validation_Status       Mutation_Status Sequencing_Phase        Sequence_Source Validation_Method       Score   BAM_File        Sequencer       Tumor_Sample_UUID       Matched_Norm_Sample_UUID        HGVSc   HGVSp   HGVSp_Short     Transcript_ID   Exon_Number     t_depth t_ref_count     t_alt_count     n_depth n_ref_count     n_alt_count     all_effects     Allele  Gene    Feature Feature_type    One_Consequence Consequence     cDNA_position   CDS_position    Protein_position        Amino_acids Codons  Existing_variation      ALLELE_NUM      DISTANCE        TRANSCRIPT_STRAND       SYMBOL  SYMBOL_SOURCE   HGNC_ID BIOTYPE CANONICAL       CCDS    ENSP    SWISSPROT       TREMBL  UNIPARC RefSeq  SIFT    PolyPhen        EXON    INTRON  DOMAINS GMAF    AFR_MAF AMR_MAF ASN_MAF EAS_MAF EUR_MAF SAS_MAF AA_MAF  EA_MAF  CLIN_SIG        SOMATIC PUBMED  MOTIF_NAME      MOTIF_POS       HIGH_INF_POS    MOTIF_SCORE_CHANGE      IMPACT  PICK    VARIANT_CLASS   TSL     HGVS_OFFSET     PHENO   MINIMISED       ExAC_AF ExAC_AF_Adj     ExAC_AF_AFR     ExAC_AF_AMR     ExAC_AF_EAS     ExAC_AF_FIN     ExAC_AF_NFE     ExAC_AF_OTH     ExAC_AF_SAS     GENE_PHENO      FILTER  CONTEXT src_vcf_id      tumor_bam_uuid  normal_bam_uuid case_id GDC_FILTER      COSMIC  MC3_Overlap     GDC_Validation_Status
 
-    row_sample = get_value(header, "Tumor_Sample_Barcode", row)
+    row_sample = get_value(header, sample_col, row)
     if sample is not None and row_sample != sample:
       continue
 
-    chrom = get_value(header, "Chromosome", row).replace('chr', '')
-    pos = int(get_value(header, "Start_Position", row))
-    ref = get_value(header, "Reference_Allele", row).replace('-', '')
-    alt = get_value(header, "Tumor_Seq_Allele2", row).replace('-', '')
+    chrom = get_value(header, chrom_col, row).replace('chr', '')
+    pos = int(get_value(header, pos_col, row))
+    ref = get_value(header, ref_col, row).replace('-', '')
+    alt = get_value(header, alt_col, row).replace('-', '')
 
     yield Variant(chrom, pos, ref, (alt,))
 
@@ -460,7 +460,12 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--vcf', required=True, help='vcf or maf')
-  parser.add_argument('--maf_sample', required=False, help='vcf is actually a maf with sample of interest')
+  parser.add_argument('--maf_sample', required=False, help='vcf is actually a maf with this sample of interest')
+  parser.add_argument('--maf_sample_column', required=False, default='Tumor_Sample_Barcode', help='maf chrom column name')
+  parser.add_argument('--maf_chrom_column', required=False, default='Chromosome', help='maf chrom column name')
+  parser.add_argument('--maf_pos_column', required=False, default='Start_Position', help='maf pos column name')
+  parser.add_argument('--maf_ref_column', required=False, default='Reference_Allele', help='maf ref column name')
+  parser.add_argument('--maf_alt_column', required=False, default='Tumor_Seq_Allele2', help='maf alt column name')
   parser.add_argument('--doublets', action='store_true', help='count doublets')
   parser.add_argument('--indels', action='store_true', help='count indels')
   parser.add_argument('--just_indels', action='store_true', help='count only indels')
@@ -473,7 +478,7 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
   if args.maf_sample is not None:
-    vcf_in = maf_to_vcf(args.vcf, args.maf_sample)
+    vcf_in = maf_to_vcf(args.vcf, args.maf_sample, args.maf_sample_column, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column)
   else:
     vcf_in = cyvcf2.VCF(args.vcf)
   count(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=sys.stdout, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, transcripts_fn=args.transcripts)
