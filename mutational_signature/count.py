@@ -427,13 +427,19 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
 def get_value(header, col, row):
   return row[header.index(col)]
 
-def maf_to_vcf(maf, sample, sample_col, chrom_col, pos_col, ref_col, alt_col):
+def open_file(fn, is_gzipped):
+  if is_gzipped:
+    return gzip.open(fn, 'rt')
+  else:
+    return open(fn, 'rt')
+
+def maf_to_vcf(maf, sample, sample_col, chrom_col, pos_col, ref_col, alt_col, is_not_zipped):
 
   Variant = collections.namedtuple('Variant', 'CHROM POS REF ALT')
 
   # enumeration a maf into a variant
   header = None
-  for line, row in enumerate(csv.reader(gzip.open(maf, 'rt'), delimiter='\t')):
+  for line, row in enumerate(csv.reader(open_file(maf, not is_not_zipped), delimiter='\t')):
     if line % 1000 == 0:
       logging.debug('processed %i lines of %s...', line, maf)
 
@@ -460,6 +466,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--vcf', required=True, help='vcf or maf')
+  parser.add_argument('--vcf_not_zipped', action='store_true', help='do not try to unzip (only matters for maf)')
   parser.add_argument('--maf_sample', required=False, help='vcf is actually a maf with this sample of interest')
   parser.add_argument('--maf_sample_column', required=False, default='Tumor_Sample_Barcode', help='maf chrom column name')
   parser.add_argument('--maf_chrom_column', required=False, default='Chromosome', help='maf chrom column name')
@@ -478,7 +485,7 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
   if args.maf_sample is not None:
-    vcf_in = maf_to_vcf(args.vcf, args.maf_sample, args.maf_sample_column, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column)
+    vcf_in = maf_to_vcf(args.vcf, args.maf_sample, args.maf_sample_column, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column, args.vcf_not_zipped)
   else:
     vcf_in = cyvcf2.VCF(args.vcf)
   count(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=sys.stdout, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, transcripts_fn=args.transcripts)
