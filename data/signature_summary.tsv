@@ -1,96 +1,96 @@
-Signature	Summary	Mutation
-SBS1	Aging
-SBS2	AID/APOBEC
-SBS3	Defective HR (BRCA)	Flat
-SBS4	Tobacco smoking
-SBS5	Aging
-SBS6	MMRd
-SBS7a	UV
-SBS7b	UV
-SBS7c	UV
-SBS7d	UV
-SBS8	?
-SBS9	Hypermutation in lymphoid cells
-SBS10a	POLE exonuclease
-SBS10b	POLE exonuclease
-SBS11	Alkylating agents
-SBS12	?
-SBS13	AID/APOBEC
-SBS14	Concurrent POLE and MMRd
-SBS15	MMRd
-SBS16	? (alcohol/tobacco/male in Liver doi:10.1038/s41467-017-01358-x)
-SBS17a	?
-SBS17b	?
-SBS18	Reactive oxygen species
-SBS19	?
-SBS20	POLD1 and MMRd
-SBS21	MMRd
-SBS22	Aristocholic Acid
-SBS23	?
-SBS24	Aflatoxin
-SBS25	Chemotherapy?
-SBS26	MMRd
-SBS27	Artefact
-SBS28	?
-SBS29	Tobacco chewing
-SBS30	NTHL1 (BER)
-SBS31	Platinum treatment
-SBS32	Azathioprine treatment
-SBS33	?
-SBS34	?
-SBS35	Platinum treatment
-SBS36	MUTYH (BER)
-SBS37	?
-SBS38	UV?
-SBS39	?	C>G enriched
-SBS40	?
-SBS41	?
-SBS42	Haloalkane exposure
-SBS43	Artefact?
-SBS44	MMRd
-SBS45	8-oxo-guanine artefact
-SBS46	Artefact
-SBS47	Artefact
-SBS48	Artefact
-SBS49	Artefact
-SBS50	Artefact
-SBS51	Artefact
-SBS52	Artefact
-SBS53	Artefact
-SBS54	Artefact germline contamination
-SBS55	Artefact
-SBS56	Artefact
-SBS57	Artefact
-SBS58	Artefact
-SBS59	Artefact
-SBS60	Artefact
-SBS84	AID
-SBS85	AID
-DBS1	UV
-DBS2	tobacco smoking, age
-DBS3	POLE exonuclease
-DBS4	?
-DBS5	Platinum treatment
-DBS6	?
-DBS7	MMRd
-DBS8	?
-DBS9	?
-DBS10	MMRd
-DBS11	APOBEC?
-ID1	MMRd tendency	5+ homopolymer 1bp T insertion
-ID2	MMRd tendency	6+ homopolymer 1bp T deletion
-ID3	Tobacco smoking
-ID4	?
-ID5	Age
-ID6	Defective HR (BRCA)
-ID7	MMRd	1bp homopolymer deletions, mainly longer 
-ID8	?
-ID9	?
-ID10	?
-ID11	?
-ID12	?
-ID13	UV
-ID14	?
-ID15	?
-ID16	?
-ID17	?
+Signature	Summary	Context
+SBS1	Aging	ACG>ATG
+SBS2	AID/APOBEC	TCA>TTA
+SBS3	Defective HR (BRCA)	CCC>CAC
+SBS4	Tobacco smoking	CCA>CAA
+SBS5	Aging	ATA>ACA
+SBS6	MMRd	GCG>GTG
+SBS7a	UV	TCC>TTC
+SBS7b	UV	TCC>TTC
+SBS7c	UV	TTT>TAT
+SBS7d	UV	GTT>GCT
+SBS8	?	ACC>AAC
+SBS9	Hypermutation in lymphoid cells	TTA>TGA
+SBS10a	POLE exonuclease	TCT>TAT
+SBS10b	POLE exonuclease	TCG>TTG
+SBS11	Alkylating agents	TCC>TTC
+SBS12	?	TTA>TCA
+SBS13	AID/APOBEC	TCT>TGT
+SBS14	Concurrent POLE and MMRd	CCT>CAT
+SBS15	MMRd	GCG>GTG
+SBS16	? (alcohol/tobacco/male in Liver doi:10.1038/s41467-017-01358-x)	ATA>ACA
+SBS17a	?	CTT>CCT
+SBS17b	?	CTT>CGT
+SBS18	Reactive oxygen species	TCT>TAT
+SBS19	?	CCT>CTT
+SBS20	POLD1 and MMRd	CCT>CAT
+SBS21	MMRd	GTA>GCA
+SBS22	Aristocholic Acid	CTG>CAG
+SBS23	?	CCC>CTC
+SBS24	Aflatoxin	GCC>GAC
+SBS25	Chemotherapy?	CTG>CAG
+SBS26	MMRd	ATA>ACA
+SBS27	Artefact	CTA>CAA
+SBS28	?	TTT>TGT
+SBS29	Tobacco chewing	GCA>GAA
+SBS30	NTHL1 (BER)	TCC>TTC
+SBS31	Platinum treatment	CCC>CTC
+SBS32	Azathioprine treatment	ACT>ATT
+SBS33	?	TTG>TCG
+SBS34	?	ATT>AAT
+SBS35	Platinum treatment	CCC>CTC
+SBS36	MUTYH (BER)	TCT>TAT
+SBS37	?	ATA>ACA
+SBS38	UV?	CCA>CAA
+SBS39	?	TCT>TGT
+SBS40	?	TCA>TTA
+SBS41	?	TTT>TGT
+SBS42	Haloalkane exposure	GCC>GTC
+SBS43	Artefact?	GTG>GGG
+SBS44	MMRd	GCA>GTA
+SBS45	8-oxo-guanine artefact	CCA>CAA
+SBS46	Artefact	CTT>CCT
+SBS47	Artefact	TTA>TAA
+SBS48	Artefact	TCG>TAG
+SBS49	Artefact	CCG>CAG
+SBS50	Artefact	ACC>AAC
+SBS51	Artefact	ACA>AAA
+SBS52	Artefact	TCA>TAA
+SBS53	Artefact	CCA>CAA
+SBS54	Artefact germline contamination	ATG>ACG
+SBS55	Artefact	GTG>GGG
+SBS56	Artefact	TCT>TAT
+SBS57	Artefact	TTT>TCT
+SBS58	Artefact	TCT>TTT
+SBS59	Artefact	GCT>GAT
+SBS60	Artefact	GTG>GGG
+SBS84	AID	GCT>GTT
+SBS85	AID	ATA>AAA
+DBS1	UV	CC>TT
+DBS2	tobacco smoking, age	CC>AA
+DBS3	POLE exonuclease	TT>GG
+DBS4	?	TC>AA
+DBS5	Platinum treatment	CT>AA
+DBS6	?	TG>CT
+DBS7	MMRd	TT>AA
+DBS8	?	AC>CT
+DBS9	?	GC>AT
+DBS10	MMRd	CG>TA
+DBS11	APOBEC?	CC>TT
+ID1	MMRd tendency	INS_T_1_5+
+ID2	MMRd tendency	DEL_T_1_5+
+ID3	Tobacco smoking	DEL_C_1_1
+ID4	?	DEL_repeats_2_1
+ID5	Age	DEL_T_1_2
+ID6	Defective HR (BRCA)	DEL_MH_5+_2
+ID7	MMRd	DEL_C_1_5+
+ID8	?	DEL_MH_5+_1
+ID9	?	DEL_C_1_0
+ID10	?	INS_repeats_5+_1
+ID11	?	INS_T_1_1
+ID12	?	DEL_repeats_2_5+
+ID13	UV	DEL_T_1_1
+ID14	?	INS_C_1_0
+ID15	?	DEL_C_1_2
+ID16	?	INS_C_1_1
+ID17	?	INS_repeats_4_1

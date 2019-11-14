@@ -3,5 +3,6 @@ cython
 cyvcf2
 intervaltree
 matplotlib
+numpy
 scipy
 sklearn

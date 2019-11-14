@@ -69,7 +69,7 @@ def update_chroms(required, chroms, genome, next_chrom):
           logging.debug('reading chrom %s from genome...', next_chrom)
     else:
       seq.append(line)
-    if linenum % 100000 == 0:
+    if linenum % 1000000 == 0:
       logging.debug('processed %i lines of genome...', linenum)
 
   # end of file
