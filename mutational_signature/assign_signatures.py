@@ -11,6 +11,7 @@
 
 import argparse
 import collections
+import csv
 import logging
 import sys
 
@@ -85,7 +86,7 @@ def plot_sbs_signature(vals, target, contexts, sigs):
 
   plt.savefig(target, dpi=DPI)
 
-def main(vcf, signatures, definition, threshold, plot):
+def main(vcf, signatures, definition, artefacts, threshold, plot):
   logging.info('starting...')
   # signatures:
   # SBS1    0.234
@@ -115,13 +116,22 @@ def main(vcf, signatures, definition, threshold, plot):
           context_val = float(fields[ctx + 1])
           # signature percent * context percent
           contexts[context].append((sigs[fields[0]] * context_val, fields[0])) # value, signature
-
   logging.info('%i signatures with value above %.2f', len(sigs), threshold)
+
+  # Signature	Summary	Context
+  # SBS1	Aging	ACG>ATG
+  if artefacts is not None:
+    artefact_signatures = set()
+    for row in csv.DictReader(open(artefacts, 'r'), delimiter='\t'):
+      if 'artefact' in row['Summary'].lower():
+        artefact_signatures.add(row['Signature'])
+    logging.info('%i signatures marked as artefact: %s', len(artefact_signatures), ' '.join(list(artefact_signatures)))
 
   # normalize on contexts
   normalized_context = {}
   for context in contexts:
     total = sum([likelihood[0] for likelihood in contexts[context]])
+    # [(0.45, SBS1), (0.2, SBS6)...]
     normalized_context[context] = [(contexts[context][idx][0] / total, contexts[context][idx][1]) for idx in range(0, len(contexts[context]))]
     logging.debug('normalized %s -> %s', context, normalized_context[context])
 
@@ -129,8 +139,10 @@ def main(vcf, signatures, definition, threshold, plot):
 
   # normalize over total context
   annotation = {}
+  artefact_likelihood = {}
   for context in contexts:
     annotation[context] = ','.join(['{}/{:.3f}'.format(likelihood[1], likelihood[0]) for likelihood in contexts[context]])
+    artefact_likelihood[context] = '{:.3f}'.format(sum([likelihood[0] for likelihood in contexts[context] if likelihood[1] in artefact_signatures]))
     # find max
     best = None
     for item in contexts[context]:
@@ -144,6 +156,8 @@ def main(vcf, signatures, definition, threshold, plot):
     
     vcf_in = cyvcf2.VCF(vcf)
     vcf_in.add_info_to_header({'ID': 'signature_likelihood', 'Description': 'signature likelihood', 'Type':'Character', 'Number': '1'})
+    if len(artefact_signatures) > 0:
+      vcf_in.add_info_to_header({'ID': 'signature_artefact', 'Description': 'signature artefact likelihood', 'Type':'Character', 'Number': '1'})
     sys.stdout.write(vcf_in.raw_header)
 
     counts = collections.defaultdict(int)
@@ -157,6 +171,8 @@ def main(vcf, signatures, definition, threshold, plot):
 
       if context in contexts:
         variant.INFO["signature_likelihood"] = annotation[context]
+        if len(artefact_signatures) > 0:
+          variant.INFO["signature_artefact"] = artefact_likelihood[context]
         counts[context] += 1
         added += 1
       else:
@@ -187,6 +203,7 @@ if __name__ == '__main__':
   parser.add_argument('--plot', required=False, help='plot context breakdowns')
   parser.add_argument('--signatures', required=True, help='calculated signatures')
   parser.add_argument('--definition', required=True, help='signature definition')
+  parser.add_argument('--artefacts', required=False, help='artefacts')
   parser.add_argument('--threshold', required=False, default=0, type=float, help='minimum value signature')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
@@ -195,4 +212,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  main(args.vcf, args.signatures, args.definition, args.threshold, args.plot)
+  main(args.vcf, args.signatures, args.definition, args.artefacts, args.threshold, args.plot)

@@ -64,6 +64,10 @@ Adjust counts
 python mutational_signature/adjust_counts.py --adjust_from opportunity.sbs.cog.tsv --adjust_to opportunity.sbs.exome.tsv --verbose < sample.count
 ```
 
+Assign artefact probability
+```
+```
+
 ## Functionality
 * combine_counts: for multiple count files, combine into a single tsv
 * combine_signatures: for multiple signature files, combine into a single tsv
