@@ -47,7 +47,7 @@ def update_chroms(required, chroms, genome, next_chrom):
     line = line.strip('\n')
     if line.startswith('>'):
       if next_chrom is None: # first line of file
-        next_chrom = line[1:].split(' ')[0]
+        next_chrom = line[1:].split(' ')[0].replace('chr', '')
         logging.debug('reading chrom %s from genome...', next_chrom)
       else:
         # remove previous chromosomes
@@ -55,11 +55,11 @@ def update_chroms(required, chroms, genome, next_chrom):
         seq = []
         logging.info('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
         if required == next_chrom:
-          next_chrom = line[1:].split(' ')[0]
+          next_chrom = line[1:].split(' ')[0].replace('chr', '')
           logging.debug('required chrom %s found', next_chrom)
           return next_chrom
         else:
-          next_chrom = line[1:].split(' ')[0]
+          next_chrom = line[1:].split(' ')[0].replace('chr', '')
           logging.debug('reading chrom %s from genome...', next_chrom)
     else:
       seq.append(line)
@@ -206,6 +206,7 @@ def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=Fal
     if len(fields) < 3:
       continue
     chrom, start, finish = fields[:3]
+    chrom = chrom.replace('chr', '')
     start = int(start)
     finish = int(finish)
     if chrom not in chroms_seen:
