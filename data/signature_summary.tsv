@@ -20,7 +20,7 @@ SBS14	Concurrent POLE and MMRd	CCT>CAT
 SBS15	MMRd	GCG>GTG
 SBS16	? (alcohol/tobacco/male in Liver doi:10.1038/s41467-017-01358-x)	ATA>ACA
 SBS17a	?	CTT>CCT
-SBS17b	?	(5-FU treatment doi.org/10.1038/s41467-019-12594-8)  CTT>CGT
+SBS17b	? (5-FU treatment doi.org/10.1038/s41467-019-12594-8)	CTT>CGT
 SBS18	Reactive oxygen species	TCT>TAT
 SBS19	?	CCT>CTT
 SBS20	POLD1 and MMRd	CCT>CAT
