@@ -3,6 +3,7 @@
   plots the 96 snv contexts given a count input
 '''
 
+import logging
 import sys
 
 import matplotlib
@@ -20,13 +21,19 @@ def plot(counts, target):
     if first:
       first = False
       continue
-    if line.count('\t') > 1:
+    if line.count('\t') > 2:
+      v, count, probability, _ = line.strip('\n').split('\t', 3)
+    elif line.count('\t') > 1:
       v, count, probability = line.strip('\n').split('\t')
     else:
       v, probability = line.strip('\n').split('\t')
-    variation = '{}>{} {}'.format(v[1], v[4], v[0:3])
-    vals[variation] = float(probability)
+    if len(v) == 5 and v[3] == '>':
+      variation = '{}>{} {}'.format(v[1], v[4], v[0:3])
+      vals[variation] = float(probability)
+    else:
+      sys.stderr.write('skipped {}\n'.format(v))
 
+  sys.stderr.write('{} contexts\n'.format(len(vals)))
   plot_signature(vals, target)
 
 def plot_signature(vals, target):

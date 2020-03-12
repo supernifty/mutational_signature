@@ -23,7 +23,7 @@ HEIGHT_MULTIPLIER = 1.8
 WIDTH_MULTIPLIER = 0.6
 DPI=300
 
-def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_cols=1, denormalize=False):
+def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_cols=1, denormalize=False, transparent=False):
   logging.info('reading from stdin with threshold %f and order %s...', threshold, order)
   rcParams.update({'font.size': fontsize})
 
@@ -130,7 +130,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01, 1.0), borderaxespad=0, ncol=legend_cols)
     lgd.get_frame().set_edgecolor('#000000')
     #fig.savefig(target, transparent=True, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
-    fig.savefig(target, transparent=False, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    fig.savefig(target, transparent=transparent, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
   else: # horizontal
     figure_width = figure_width or 24
@@ -198,7 +198,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0)
     lgd.get_frame().set_edgecolor('#000000')
     #fig.savefig(target, transparent=True, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
-    fig.savefig(target, transparent=False, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    fig.savefig(target, transparent=transparent, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
   plt.close('all')
 
 if __name__ == '__main__':
@@ -222,6 +222,7 @@ if __name__ == '__main__':
   parser.add_argument('--fontsize', required=False, default=12, type=int, help='plot font size')
   parser.add_argument('--vertical', action='store_true', help='plot vertically')
   parser.add_argument('--denormalize', action='store_true', help='do not constrain to 100%')
+  parser.add_argument('--transparent', action='store_true', help='transparent')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -229,4 +230,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_cols, args.denormalize)
+  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_cols, args.denormalize, args.transparent)
