@@ -86,15 +86,27 @@ def plot_sbs_signature(vals, target, contexts, sigs):
 
   plt.savefig(target, dpi=DPI)
 
-def main(vcf, signatures, definition, artefacts, threshold, plot):
+def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, plot):
   logging.info('starting...')
   # signatures:
   # SBS1    0.234
   all_sigs = {}
-  for line in open(signatures, 'r'):
-    name, value = line.strip('\n').split('\t')
-    if float(value) > threshold:
+  if signatures is None:
+    logging.info('calculating with uniform prior')
+  else:
+    logging.info('reading %s...', signatures)
+    for line in open(signatures, 'r'):
+      fields = line.strip('\n').split('\t')
+      name, value = fields[0], fields[1]
+      if value == 'Count': # header in new version
+        continue
+      #if float(value) > threshold:
       all_sigs[name] = float(value)
+
+    # update with belief
+    uniform = 1 / len(all_sigs)
+    for name in all_sigs:
+      all_sigs[name] = uniform + (all_sigs[name] - uniform) * signatures_belief
     
   # definition:
   # Sig     ACAA     ACAC     ACAG     ACAT     ACGA    
@@ -107,14 +119,17 @@ def main(vcf, signatures, definition, artefacts, threshold, plot):
 
     for line in def_fh:
       fields = line.strip('\n').split('\t')
-      if fields[0] in all_sigs:
-        sigs[fields[0]] = all_sigs[fields[0]]
+      if fields[0] in all_sigs or signatures is None:
+        if signatures is None:
+          sigs[fields[0]] = 0.01 # uniform prior, will be normalised later
+        else:
+          sigs[fields[0]] = all_sigs[fields[0]]
         # keep a map of context -> sigs
         for ctx, context in enumerate(header[1:]):
           if len(context) == 4 and '>' not in context:
             context = '{}{}{}>{}'.format(context[0], context[1], context[3], context[2])
-          context_val = float(fields[ctx + 1])
-          # signature percent * context percent
+          context_val = float(fields[ctx + 1]) # from definition
+          # signature percent (prior) * context percent
           contexts[context].append((sigs[fields[0]] * context_val, fields[0])) # value, signature
   logging.info('%i signatures with value above %.2f', len(sigs), threshold)
 
@@ -141,7 +156,7 @@ def main(vcf, signatures, definition, artefacts, threshold, plot):
   annotation = {}
   artefact_likelihood = {}
   for context in contexts:
-    annotation[context] = ','.join(['{}/{:.3f}'.format(likelihood[1], likelihood[0]) for likelihood in contexts[context]])
+    annotation[context] = ','.join(['{}/{:.3f}'.format(likelihood[1], likelihood[0]) for likelihood in contexts[context] if likelihood[0] > threshold])
     artefact_likelihood[context] = '{:.3f}'.format(sum([likelihood[0] for likelihood in contexts[context] if likelihood[1] in artefact_signatures]))
     # find max
     best = None
@@ -198,13 +213,14 @@ def main(vcf, signatures, definition, artefacts, threshold, plot):
     logging.info('done: skipped no context %i skipped wrong context %i added %i', skipped_no_context, skipped_wrong_context, added)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Assign signature probbilities to variants')
+  parser = argparse.ArgumentParser(description='Assign signature probabilities to variants')
   parser.add_argument('--vcf', required=False, help='annotated vcf file')
   parser.add_argument('--plot', required=False, help='plot context breakdowns')
-  parser.add_argument('--signatures', required=True, help='calculated signatures')
+  parser.add_argument('--signatures', required=False, help='calculated signatures used as prior')
+  parser.add_argument('--signatures_belief', required=False, default=1, type=float, help='how much to believe new signatures')
   parser.add_argument('--definition', required=True, help='signature definition')
   parser.add_argument('--artefacts', required=False, help='artefacts')
-  parser.add_argument('--threshold', required=False, default=0, type=float, help='minimum value signature')
+  parser.add_argument('--threshold', required=False, default=0, type=float, help='minimum value signature and posterior probability')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -212,4 +228,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  main(args.vcf, args.signatures, args.definition, args.artefacts, args.threshold, args.plot)
+  main(args.vcf, args.signatures, args.signatures_belief, args.definition, args.artefacts, args.threshold, args.plot)

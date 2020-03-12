@@ -30,7 +30,7 @@ def update_chroms(required, chroms, genome, next_chrom):
     line = line.strip('\n')
     if line.startswith('>'):
       if next_chrom is None: # first line of file
-        next_chrom = line[1:].split(' ')[0]
+        next_chrom = line[1:].split(' ')[0].replace('chr', '')
         logging.debug('reading chrom %s from genome...', next_chrom)
       else:
         # remove previous chromosomes
@@ -38,11 +38,11 @@ def update_chroms(required, chroms, genome, next_chrom):
         seq = []
         logging.debug('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
         if required == next_chrom:
-          next_chrom = line[1:].split(' ')[0]
+          next_chrom = line[1:].split(' ')[0].replace('chr', '')
           logging.debug('required chrom %s found', next_chrom)
           return next_chrom
         else:
-          next_chrom = line[1:].split(' ')[0]
+          next_chrom = line[1:].split(' ')[0].replace('chr', '')
           logging.debug('reading chrom %s from genome...', next_chrom)
     else:
       seq.append(line)
@@ -53,22 +53,26 @@ def update_chroms(required, chroms, genome, next_chrom):
   return None
 
 def context(variant, chroms):
-  if variant.POS == 1 or variant.POS > len(chroms[variant.CHROM]):
-    logging.info('skipped edge variant at %s:%i', variant.CHROM, variant.POS)
+  chrom = variant.CHROM.replace('chr', '')
+  if chrom not in chroms:
+    logging.info('skipping chromosome %s', chrom)
+    return None
+  if variant.POS == 1 or variant.POS > len(chroms[chrom]):
+    logging.info('skipped edge variant at %s:%i', chrom, variant.POS)
     return None
   if len(variant.REF) != 1 or len(variant.ALT[0]) != 1:
-    logging.debug('skipped indel at %s:%i', variant.CHROM, variant.POS)
+    logging.debug('skipped indel at %s:%i', chrom, variant.POS)
     return None
 
   # 0 1 2 -> my indexes
   # 1 2 3 -> vcf indexes
-  fragment = chroms[variant.CHROM][variant.POS - 2:variant.POS + 1].upper() # TODO should we instead skip lower case
+  fragment = chroms[chrom][variant.POS - 2:variant.POS + 1].upper() # TODO should we instead skip lower case
   if fragment[1] != variant.REF:
-    logging.warn('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', variant.CHROM, variant.POS, variant.REF, fragment[0], fragment[1], fragment[2])
+    logging.warn('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', chrom, variant.POS, variant.REF, fragment[0], fragment[1], fragment[2])
     return
 
   if any([x not in 'ACGT' for x in ''.join([fragment, variant.ALT[0]])]):
-    logging.warn('skipping variant with ill-defined transition {}>{} at {}:{}'.format(fragment, variant.ALT[0], variant.CHROM, variant.POS))
+    logging.warn('skipping variant with ill-defined transition {}>{} at {}:{}'.format(fragment, variant.ALT[0], chrom, variant.POS))
     return
     
   v = '{}>{}'.format(fragment, variant.ALT[0]) # TODO multiallele
@@ -93,10 +97,11 @@ def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None):
   sys.stdout.write(vcf_in.raw_header)
 
   for line, variant in enumerate(vcf_in):
-    if variant.CHROM not in chroms_seen:
-      logging.debug('chrom %s seen in vcf', variant.CHROM)
-      next_chrom = update_chroms(variant.CHROM, chroms, genome_fh, next_chrom)
-      chroms_seen.add(variant.CHROM)
+    chrom = variant.CHROM.replace('chr', '')
+    if chrom not in chroms_seen:
+      logging.debug('chrom %s seen in vcf', chrom)
+      next_chrom = update_chroms(chrom, chroms, genome_fh, next_chrom)
+      chroms_seen.add(chrom)
 
     if variant_filter is not None and not variant_filter(vcf_in, variant):
       filtered += 1

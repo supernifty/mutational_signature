@@ -24,6 +24,7 @@ def main(signatures, files):
   sys.stdout.write('Sample\t{}\n'.format('\t'.join([x.replace('Signature.', '') for x in sigs])))
   
   for file in files:
+    logging.debug('processing %s...', file)
     #result = [file.split('.')[0]]
     #result = [file.split('/')[-1].split('.')[0]]
     result = [file.split('/')[-1]]
@@ -38,6 +39,7 @@ def main(signatures, files):
       else:
         result.append('0') # default
     sys.stdout.write('{}\n'.format('\t'.join(result)))
+    logging.debug('processing %s: done', file)
 
   logging.info('done')
 

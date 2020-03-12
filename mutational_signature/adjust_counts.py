@@ -29,7 +29,7 @@ def main(input, output, adjust_from_fh, adjust_to_fh):
         fh.writerow({'Variation': row['Variation'], 'Count': int(int(row['Count']) * ratio), 'Probability': float(row['Probability']) * ratio})
         updated += 1
       else:
-        fh.writerow(row)
+        fh.writerow({'Variation': row['Variation'], 'Count': row['Count'], 'Probability': row['Probability']})
 
   logging.info('done. updated %i', updated)
 
