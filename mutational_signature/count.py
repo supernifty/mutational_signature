@@ -77,34 +77,41 @@ def update_chroms(required, chroms, genome, next_chrom):
   logging.info('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
   return None
 
+def no_chr(chrom):
+  return chrom.replace('chr', '')
+
 def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_indels, transcripts=None, exons=None, tx_counts=None):
-  if variant.POS == 1 or variant.POS > len(chroms[variant.CHROM]):
-    logging.info('skipped edge variant at %s:%i', variant.CHROM, variant.POS)
+  if no_chr(variant.CHROM) not in chroms:
+    logging.warn('chromosome %s not found in genome', variant.CHROM)
+    return
+
+  if variant.POS == 1 or variant.POS > len(chroms[no_chr(variant.CHROM)]):
+    logging.info('skipped edge variant at %s:%i', no_chr(variant.CHROM), variant.POS)
     return
 
   exon_strand = None
   tx_strand = None
 
-  if exons is not None and variant.CHROM in exons:
-    intersections = exons[variant.CHROM][variant.POS]
+  if exons is not None and no_chr(variant.CHROM) in exons:
+    intersections = exons[no_chr(variant.CHROM)][variant.POS]
     if len(intersections) == 0:
-      logging.debug('%s:%i is not coding', variant.CHROM, variant.POS)
+      logging.debug('%s:%i is not coding', no_chr(variant.CHROM), variant.POS)
     elif len(intersections) > 1:
-      logging.debug('%i intersections at %s:%i', len(intersections), variant.CHROM, variant.POS) # can't decide
+      logging.debug('%i intersections at %s:%i', len(intersections), no_chr(variant.CHROM), variant.POS) # can't decide
       # pick the first
       exon_strand = list(intersections)[0][2]
-      logging.debug('%i intersections at %s:%i: first is %s', len(intersections), variant.CHROM, variant.POS, exon_strand) # can't decide
+      logging.debug('%i intersections at %s:%i: first is %s', len(intersections), no_chr(variant.CHROM), variant.POS, exon_strand) # can't decide
     else:
       exon_strand = list(intersections)[0][2]
 
-  if transcripts is not None and variant.CHROM in transcripts:
-    intersections = transcripts[variant.CHROM][variant.POS]
+  if transcripts is not None and no_chr(variant.CHROM) in transcripts:
+    intersections = transcripts[no_chr(variant.CHROM)][variant.POS]
     if len(intersections) == 0:
-      logging.debug('%s:%i is not coding', variant.CHROM, variant.POS)
+      logging.debug('%s:%i is not coding', no_chr(variant.CHROM), variant.POS)
     elif len(intersections) > 1:
-      logging.debug('%i multiple intersections at %s:%i', len(intersections), variant.CHROM, variant.POS) # can't decide
+      logging.debug('%i multiple intersections at %s:%i', len(intersections), no_chr(variant.CHROM), variant.POS) # can't decide
       tx_strand = list(intersections)[0][2]
-      logging.debug('%i multiple intersections at %s:%i: first is %s', len(intersections), variant.CHROM, variant.POS, tx_strand) # can't decide
+      logging.debug('%i multiple intersections at %s:%i: first is %s', len(intersections), no_chr(variant.CHROM), variant.POS, tx_strand) # can't decide
     else:
       tx_strand = list(intersections)[0][2]
 
@@ -133,10 +140,10 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
       else:  
         # deletions look like TAAA -> T POS is where the T is
         deleted_sequence = variant.REF[len(variant.ALT[0]):]
+      logging.debug('deleted sequence is %s from %s to %s', deleted_sequence, variant.REF, variant.ALT[0])
       # first look for ongoing repeated sequence. POS-1 puts us at the T
       current_pos = variant.POS + len(variant.ALT[0]) - 1 + len(deleted_sequence)
-      logging.debug('deleted sequence at %s:%i on genome is "%s" in vcf is "%s" from "%s" to "%s" genome at current_pos %i is "%s"', variant.CHROM, variant.POS, chroms[variant.CHROM][variant.POS], deleted_sequence, variant.REF, variant.ALT[0], current_pos, chroms[variant.CHROM][current_pos])
-      while chroms[variant.CHROM][current_pos:current_pos + len(deleted_sequence)] == deleted_sequence:
+      while chroms[no_chr(variant.CHROM)][current_pos:current_pos + len(deleted_sequence)] == deleted_sequence:
         current_pos += len(deleted_sequence)
         repeats += 1
         if repeats > 10000:
@@ -151,19 +158,19 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
           microhomology = 0
           # first look to the right
           for pos in range(0, len(deleted_sequence)):
-            if chroms[variant.CHROM][variant.POS + len(variant.ALT[0]) - 1 + len(deleted_sequence) + pos] == deleted_sequence[pos]:
+            if chroms[no_chr(variant.CHROM)][variant.POS + len(variant.ALT[0]) - 1 + len(deleted_sequence) + pos] == deleted_sequence[pos]:
               microhomology += 1
             else:
               break
           # now look to the left
           for pos in range(len(deleted_sequence) - 1, -1, -1):
-            if chroms[variant.CHROM][variant.POS + len(variant.ALT[0]) - 1 - len(deleted_sequence) + pos] == deleted_sequence[pos]:
+            if chroms[no_chr(variant.CHROM)][variant.POS + len(variant.ALT[0]) - 1 - len(deleted_sequence) + pos] == deleted_sequence[pos]:
               microhomology += 1
             else:
               break
 
           if microhomology >= del_length:
-            logging.warn('Microhomology calculation went wrong at %s:%i %i del length %i del sequence %s', variant.CHROM, variant.POS, microhomology, del_length, deleted_sequence)
+            logging.warn('Microhomology calculation went wrong at %s:%i %i del length %i del sequence %s', no_chr(variant.CHROM), variant.POS, microhomology, del_length, deleted_sequence)
           
           if microhomology > 0:
             category['repeats'] = '5+' if microhomology >= 5 else microhomology
@@ -183,7 +190,7 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
         # insertions look like G -> GCA. POS is where the G is
         inserted_sequence = variant.ALT[0][len(variant.REF):]
       current_pos = variant.POS + len(variant.REF) - 1
-      while chroms[variant.CHROM][current_pos:current_pos + len(inserted_sequence)] == inserted_sequence:
+      while chroms[no_chr(variant.CHROM)][current_pos:current_pos + len(inserted_sequence)] == inserted_sequence:
         current_pos += len(inserted_sequence)
         repeats += 1
         if repeats > 10000:
@@ -196,14 +203,14 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
 
     indel_category = '{category}_{content}_{length}_{repeats}'.format(**category)
     counts[indel_category] += 1
-    logging.debug('indel at %s:%s "%s" -> "%s" classified as %s', variant.CHROM, variant.POS, variant.REF, variant.ALT[0], indel_category)
+    #logging.debug('indel at %s:%s %s -> %s classified as %s', no_chr(variant.CHROM), variant.POS, variant.REF, variant.ALT[0], indel_category)
     if indel_category not in INDELS:
       logging.warn('unexpected indel category %s', indel_category)
 
   # no need to look at this indel any more
   if len(variant.REF) != 1 or len(variant.ALT[0]) != 1:
     if not indels:
-      logging.debug('skipped indel at %s:%i', variant.CHROM, variant.POS)
+      logging.debug('skipped indel at %s:%i', no_chr(variant.CHROM), variant.POS)
     return
 
   if just_indels:
@@ -213,13 +220,13 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
   # 0 1 2 -> my indexes
   # 1 2 3 -> vcf indexes
   # pulling in -1 0 +1
-  fragment = chroms[variant.CHROM][variant.POS - 2:variant.POS + 1].upper() # potentially could instead skip lower case
+  fragment = chroms[no_chr(variant.CHROM)][variant.POS - 2:variant.POS + 1].upper() # potentially could instead skip lower case
   if fragment[1] != variant.REF:
-    logging.warn('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', variant.CHROM, variant.POS, variant.REF, fragment[0], fragment[1], fragment[2])
+    logging.warn('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', no_chr(variant.CHROM), variant.POS, variant.REF, fragment[0], fragment[1], fragment[2])
     return
 
   if any([x not in 'ACGT' for x in ''.join([fragment, variant.ALT[0]])]):
-    logging.warn('skipping variant with ill-defined transition {}>{} at {}:{}'.format(fragment, variant.ALT[0], variant.CHROM, variant.POS))
+    logging.warn('skipping variant with ill-defined transition {}>{} at {}:{}'.format(fragment, variant.ALT[0], no_chr(variant.CHROM), variant.POS))
     return
     
   v = '{}>{}'.format(fragment, variant.ALT[0]) # TODO multiallele
@@ -232,14 +239,14 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
 
   # --- doublets
   if doublets:
-    if last_variant is not None and last_variant.CHROM == variant.CHROM and last_variant.POS == variant.POS - 1:
+    if last_variant is not None and no_chr(last_variant.CHROM) == no_chr(variant.CHROM) and last_variant.POS == variant.POS - 1:
       doublet = '{}{}>{}{}'.format(last_variant.REF, variant.REF, last_variant.ALT[0], variant.ALT[0])
       if len(doublet) != 5:
-        logging.warn('skipping doublet %s at %s:%i', doublet, variant.CHROM, variant.POS)
+        logging.warn('skipping doublet %s at %s:%i', doublet, no_chr(variant.CHROM), variant.POS)
       else:
         doublet = normalize_doublet(doublet)
         counts[doublet] += 1
-        logging.debug('doublet found at %s:%s: %s', variant.CHROM, variant.POS, doublet)
+        logging.debug('doublet found at %s:%s: %s', no_chr(variant.CHROM), variant.POS, doublet)
 
 def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, doublets=False, indels=False, just_indels=False):
   logging.info('processing %s with %i filters...', vcf, len(variant_filters))
@@ -258,10 +265,10 @@ def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, do
   last_variant = None
   vcf_in = cyvcf2.VCF(vcf)
   for line, variant in enumerate(vcf_in):
-    if variant.CHROM not in chroms_seen:
-      logging.debug('chrom %s seen in vcf', variant.CHROM)
-      next_chrom = update_chroms(variant.CHROM, chroms, genome_fh, next_chrom)
-      chroms_seen.add(variant.CHROM)
+    if no_chr(variant.CHROM) not in chroms_seen:
+      logging.debug('chrom %s seen in vcf', no_chr(variant.CHROM))
+      next_chrom = update_chroms(no_chr(variant.CHROM), chroms, genome_fh, next_chrom)
+      chroms_seen.add(no_chr(variant.CHROM))
 
     # keep track of lots of counts
     for idx, variant_filter in enumerate(variant_filters):
@@ -365,10 +372,10 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
 
   last_variant = None
   for line, variant in enumerate(vcf_in):
-    if variant.CHROM not in chroms_seen:
-      logging.debug('chrom %s seen in vcf', variant.CHROM)
-      next_chrom = update_chroms(variant.CHROM, chroms, genome_fh, next_chrom)
-      chroms_seen.add(variant.CHROM)
+    if no_chr(variant.CHROM) not in chroms_seen:
+      logging.debug('chrom %s seen in vcf', no_chr(variant.CHROM))
+      next_chrom = update_chroms(no_chr(variant.CHROM), chroms, genome_fh, next_chrom)
+      chroms_seen.add(no_chr(variant.CHROM))
 
     if variant_filter is not None and not variant_filter(vcf_in, variant):
       filtered += 1
@@ -447,7 +454,6 @@ def maf_to_vcf(maf, sample, sample_col, chrom_col, pos_col, ref_col, alt_col, is
       continue
     if header is None:
       header = row
-      logging.debug('header is %s', header)
       continue
 
     #Hugo_Symbol     Entrez_Gene_Id  Center  NCBI_Build      Chromosome      Start_Position  End_Position    Strand  Variant_Classification  Variant_Type    Reference_Allele        Tumor_Seq_Allele1       Tumor_Seq_Allele2       dbSNP_RS        dbSNP_Val_Status        Tumor_Sample_Barcode    Matched_Norm_Sample_Barcode     Match_Norm_Seq_Allele1  Match_Norm_Seq_Allele2  Tumor_Validation_Allele1        Tumor_Validation_Allele2        Match_Norm_Validation_Allele1   Match_Norm_Validation_Allele2   Verification_Status     Validation_Status       Mutation_Status Sequencing_Phase        Sequence_Source Validation_Method       Score   BAM_File        Sequencer       Tumor_Sample_UUID       Matched_Norm_Sample_UUID        HGVSc   HGVSp   HGVSp_Short     Transcript_ID   Exon_Number     t_depth t_ref_count     t_alt_count     n_depth n_ref_count     n_alt_count     all_effects     Allele  Gene    Feature Feature_type    One_Consequence Consequence     cDNA_position   CDS_position    Protein_position        Amino_acids Codons  Existing_variation      ALLELE_NUM      DISTANCE        TRANSCRIPT_STRAND       SYMBOL  SYMBOL_SOURCE   HGNC_ID BIOTYPE CANONICAL       CCDS    ENSP    SWISSPROT       TREMBL  UNIPARC RefSeq  SIFT    PolyPhen        EXON    INTRON  DOMAINS GMAF    AFR_MAF AMR_MAF ASN_MAF EAS_MAF EUR_MAF SAS_MAF AA_MAF  EA_MAF  CLIN_SIG        SOMATIC PUBMED  MOTIF_NAME      MOTIF_POS       HIGH_INF_POS    MOTIF_SCORE_CHANGE      IMPACT  PICK    VARIANT_CLASS   TSL     HGVS_OFFSET     PHENO   MINIMISED       ExAC_AF ExAC_AF_Adj     ExAC_AF_AFR     ExAC_AF_AMR     ExAC_AF_EAS     ExAC_AF_FIN     ExAC_AF_NFE     ExAC_AF_OTH     ExAC_AF_SAS     GENE_PHENO      FILTER  CONTEXT src_vcf_id      tumor_bam_uuid  normal_bam_uuid case_id GDC_FILTER      COSMIC  MC3_Overlap     GDC_Validation_Status
