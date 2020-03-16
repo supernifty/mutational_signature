@@ -68,6 +68,19 @@ Assign artefact probability
 ```
 ```
 
+Generate de novo signatures
+```
+python mutational_signature/generate.py \
+  --counts *.counts \
+  --components 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 \
+  --compare_to data/signatures_cosmic_v3_sbs.txt \
+  --compare_to_matches 1 \
+  --min_mutation_proportion 0.01 \
+  --bootstraps 100 \
+  --bootstrap_plot 'bootstraps.png' \
+  --component_plot 'component.png'
+```
+
 ## Functionality
 * combine_counts: for multiple count files, combine into a single tsv
 * combine_signatures: for multiple signature files, combine into a single tsv
