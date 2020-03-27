@@ -58,12 +58,15 @@ def plot_signature(vals, target):
   ax.set_xticks(x)
   ax.set_xticklabels([x.split(' ')[1] for x in xs], minor=False, rotation=90)
   plt.ylim(0, ylim)
-  plt.xlim(0, width)
+  plt.xlim(-0.5, width)
 
   ax2 = ax.twiny()
   ax2.set_xlim(ax.get_xlim())
   ax2.set_xticks([ width * (x/6.0 + 1/12.0) for x in range(6) ])
   ax2.set_xticklabels(['C>A', 'C>G', 'C>T', 'T>A', 'T>C', 'T>G'])
+
+  for x in range(1, 6):
+    ax.axvline(x=x * 16 - 0.5, color='#e0e0e0')
 
   plt.savefig(target)
 
