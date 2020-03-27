@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 '''
-  generate signatures from count files
+  generate de novo signatures from count files
+  TODO heatmap as well as pca
 '''
 
 import argparse

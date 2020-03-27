@@ -114,18 +114,49 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
           logging.debug('trying rule %s at relative position %i', rule, current_pos)
           for context in rule[1:]:
             logging.debug('evaluating context %s...', context)
-            pos, expected_base = context.split('=')
-            pos = variant.POS + rel_pos + int(pos) + current_pos
-            if pos < 1 or pos > len(chroms[variant.CHROM]):
-              logging.warn('unable to assess variant at %s:%i', variant.CHROM, variant.POS)
-              passes = False
-              break
-            genome_base = chroms[variant.CHROM][pos - 1]
-            logging.debug('genome base is %s at %s:%i, required base is %s', genome_base, variant.CHROM, pos, expected_base)
-            if genome_base != expected_base:
-              logging.debug('genome base is %s at %s:%i, required base is %s: failed', genome_base, variant.CHROM, pos, expected_base)
-              passes = False
-              break
+            if '=' in context:
+              pos, expected_base = context.split('=')
+              pos = variant.POS + rel_pos + int(pos) + current_pos
+              if pos < 1 or pos > len(chroms[variant.CHROM]):
+                logging.warn('unable to assess variant at %s:%i', variant.CHROM, variant.POS)
+                passes = False
+                break
+              genome_base = chroms[variant.CHROM][pos - 1]
+              logging.debug('genome base is %s at %s:%i, required base is %s', genome_base, variant.CHROM, pos, expected_base)
+              if genome_base != expected_base:
+                logging.debug('genome base is %s at %s:%i, required base is %s: failed', genome_base, variant.CHROM, pos, expected_base)
+                passes = False
+                break
+            elif '~' in context:
+              pos, expected_bases = context.split('~')
+              pos = variant.POS + rel_pos + int(pos) + current_pos
+              if pos < 1 or pos > len(chroms[variant.CHROM]):
+                logging.warn('unable to assess variant at %s:%i', variant.CHROM, variant.POS)
+                passes = False
+                break
+              genome_base = chroms[variant.CHROM][pos - 1]
+              logging.debug('genome base is %s at %s:%i, required base is any of %s', genome_base, variant.CHROM, pos, expected_bases)
+              if genome_base not in expected_bases:
+                logging.debug('genome base is %s at %s:%i, required base is any of %s: failed', genome_base, variant.CHROM, pos, expected_bases)
+                passes = False
+                break
+            elif '!' in context:
+              pos, unexpected_base = context.split('!')
+              pos = variant.POS + rel_pos + int(pos) + current_pos
+              if pos < 1 or pos > len(chroms[variant.CHROM]):
+                logging.warn('unable to assess variant at %s:%i', variant.CHROM, variant.POS)
+                passes = False
+                break
+              genome_base = chroms[variant.CHROM][pos - 1]
+              logging.debug('genome base is %s at %s:%i, base cannot be %s', genome_base, variant.CHROM, pos, unexpected_base)
+              if genome_base == unexpected_base:
+                logging.debug('genome base is %s at %s:%i, base cannot be %s: failed', genome_base, variant.CHROM, pos, unexpected_base)
+                passes = False
+                break
+                
+            else:
+              logging.warn('invalid context %s', context)
+
           logging.debug('finished trying rules at %i, passes: %s', current_pos, passes)
           if passes: # found a position that succeeds for all contexts
             logging.debug('rule %s succeeded at relative position %i', rule, current_pos)

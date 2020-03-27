@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-  plots the breakdown of sigs
+  plots the breakdown of sigs with the expectation that it contains headers SBS1, ...
 '''
 
 import argparse
