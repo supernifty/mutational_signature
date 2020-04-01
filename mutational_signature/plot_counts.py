@@ -3,6 +3,7 @@
   plots the 96 snv contexts given a count input
 '''
 
+import argparse
 import logging
 import sys
 
@@ -19,7 +20,8 @@ HEIGHT=6
 
 rcParams['figure.figsize'] = WIDTH, HEIGHT
 
-def plot(counts, target):
+def plot(counts, target, style='sbs', name=None):
+  logging.info('reading from stdin...')
   first = True
   vals = {}
   for line in counts:
@@ -32,16 +34,24 @@ def plot(counts, target):
       v, count, probability = line.strip('\n').split('\t')
     else:
       v, probability = line.strip('\n').split('\t')
-    if len(v) == 5 and v[3] == '>':
-      variation = '{}>{} {}'.format(v[1], v[4], v[0:3])
-      vals[variation] = float(probability)
+    if style == 'sbs':
+      if len(v) == 5 and v[3] == '>':
+        variation = '{}>{} {}'.format(v[1], v[4], v[0:3])
+        vals[variation] = float(probability)
+      else:
+        logging.info('skipped {}\n'.format(v))
     else:
-      sys.stderr.write('skipped {}\n'.format(v))
+      vals[v] = float(probability)
 
   sys.stderr.write('{} contexts\n'.format(len(vals)))
-  plot_signature(vals, target)
+  if style == 'sbs':
+    plot_signature(vals, target, name)
+  elif style == 'id':
+    plot_signature_ids(vals, target, name)
+  else:
+    logging.warn('unrecognised plot type %s', style)
 
-def plot_signature(vals, target):
+def plot_signature(vals, target, name=None):
   xs = sorted(vals.keys())
   ys = list([vals[x] for x in xs])
 
@@ -68,10 +78,13 @@ def plot_signature(vals, target):
   for x in range(1, 6):
     ax.axvline(x=x * 16 - 0.5, color='#e0e0e0')
 
-  plt.savefig(target)
+  if name is not None:
+    plt.annotate(name, xy=(0.01, 0.95), xycoords='axes fraction', fontsize=14)
+
+  plt.savefig(target, bbox_inches='tight')
 
 
-def plot_signature_ids(vals, target):
+def plot_signature_ids(vals, target, name=None):
   xs = sorted(vals.keys())
   ys = list([vals[x] for x in xs])
 
@@ -149,8 +162,21 @@ def plot_signature_ids(vals, target):
     if i < len(patches) - 1:
       ax.axvline(x=patch[1] + patch[3]/2 - 0.5, color='#e0e0e0')
 
-  plt.savefig(target)
+  if name is not None:
+    plt.annotate(name, xy=(0.01, 0.95), xycoords='axes fraction', fontsize=14)
+  plt.savefig(target, bbox_inches='tight')
  
-
 if __name__ == '__main__':
-  plot(sys.stdin, sys.argv[1])
+  parser = argparse.ArgumentParser(description='Plot contexts')
+  parser.add_argument('--verbose', action='store_true', help='more logging')
+  parser.add_argument('--type', required=False, default='sbs', help='sbs or id')
+  parser.add_argument('--name', required=False, help='name of plot')
+  parser.add_argument('--target', required=False, default='plot.png', help='output filename')
+  args = parser.parse_args()
+  if args.verbose:
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
+  else:
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
+
+  plot(sys.stdin, args.target, args.type, args.name)
+

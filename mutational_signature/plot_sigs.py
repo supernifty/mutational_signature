@@ -20,10 +20,10 @@ def main(prefix, category):
       vals = {'{}>{} {}{}{}'.format(k[1], k[2], k[0], k[1], k[3]): float(row[k]) for k in row if k != 'Sig'}
     
       logging.debug('plotting %s with %i vals i.e.. %s...', output, len(vals), vals)
-      mutational_signature.plot_counts.plot_signature(vals, output)
+      mutational_signature.plot_counts.plot_signature(vals, output, name=row['Sig'])
     elif category == 'ids':
       vals = {k: float(row[k]) for k in row if k != 'Sig'}
-      mutational_signature.plot_counts.plot_signature_ids(vals, output)
+      mutational_signature.plot_counts.plot_signature_ids(vals, output, name=row['Sig'])
 
     logging.info('plotting %s: done', output)
   logging.info('done')
