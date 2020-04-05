@@ -31,7 +31,7 @@ SBS24	Aflatoxin	GCC>GAC
 SBS25	Chemotherapy?	CTG>CAG
 SBS26	MMRd	ATA>ACA
 SBS27	Artefact	CTA>CAA
-SBS28	?	TTT>TGT
+SBS28	Associated with POLE	TTT>TGT
 SBS29	Tobacco chewing	GCA>GAA
 SBS30	NTHL1 (BER)	TCC>TTC
 SBS31	Platinum treatment	CCC>CTC
