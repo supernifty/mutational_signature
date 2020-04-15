@@ -87,7 +87,7 @@ ID7	MMRd	DEL_C_1_5+
 ID8	?	DEL_MH_5+_1
 ID9	?	DEL_C_1_0
 ID10	?	INS_repeats_5+_1
-ID11	?	INS_T_1_1
+ID11	? Radiation treatment (doi:10.1038/s41588-019-0525-5)	INS_T_1_1
 ID12	?	DEL_repeats_2_5+
 ID13	UV	DEL_T_1_1
 ID14	?	INS_C_1_0
