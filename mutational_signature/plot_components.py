@@ -23,7 +23,7 @@ HEIGHT_MULTIPLIER = 1.8
 WIDTH_MULTIPLIER = 0.6
 DPI=300
 
-def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_cols=1, denormalize=False, transparent=False):
+def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_cols=1, denormalize=False, transparent=False, custom_colors=None):
   logging.info('reading from stdin with threshold %f and order %s...', threshold, order)
   rcParams.update({'font.size': fontsize})
 
@@ -33,7 +33,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
   if order is None:
     order = header[1:]
 
-  logging.info('plotting up to %i sigs...', len(order))
+  logging.info('plotting up to %i sig: %s...', len(order), order)
 
   samples = []
   data = []
@@ -41,7 +41,8 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
   seen = set()
   seen_index = set()
 
-  for row in sigs: # each line
+  for idx, row in enumerate(sigs): # each line
+    logging.debug('processing line %i: %s...', idx, row)
     xs = []
     samples.append(row[0]) # assume sample name first column
     for i, o in enumerate(order): # each signature
@@ -69,7 +70,11 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     filtered.append(new_row)
   data = filtered
 
-  colors = {"SBS1": "#c0c0c0", "SBS2": "#41ac2f", "SBS3": "#7951d0", "SBS4": "#73d053", "SBS5": "#b969e9", "SBS6": "#91ba2c", "SBS7a": "#b4b42f", "SBS7b": "#5276ec", "SBS7c": "#daae36", "SBS7d": "#9e40b5", "SBS8": "#43c673", "SBS9": "#dd4cb0", "SBS10a": "#3d9332", "SBS10b": "#de77dd", "SBS11": "#7bad47", "SBS12": "#9479e8", "SBS13": "#487b21", "SBS14": "#a83292", "SBS15": "#83c67d", "SBS16": "#664db1", "SBS17a": "#e18d28", "SBS17b": "#588de5", "SBS18": "#e2672a", "SBS19": "#34c7dd", "SBS20": "#cf402b", "SBS21": "#5acdaf", "SBS22": "#d74587", "SBS23": "#428647", "SBS24": "#7b51a7", "SBS25": "#b4ba64", "SBS26": "#646cc1", "SBS27": "#a27f1f", "SBS28": "#3b63ac", "SBS29": "#dca653", "SBS30": "#505099", "SBS31": "#7d8529", "SBS32": "#bf8ade", "SBS33": "#516615", "SBS34": "#b65da7", "SBS35": "#57a87a", "SBS36": "#c84249", "SBS37": "#37b5b1", "SBS38": "#a14622", "SBS39": "#58b5e1", "SBS40": "#ba6e2f", "SBS41": "#589ed8", "SBS42": "#e98261", "SBS43": "#3176ae", "SBS44": "#656413", "SBS45": "#a19fe2", "SBS46": "#756121", "SBS47": "#7e4a8d", "SBS48": "#326a38", "SBS49": "#dd8abf", "SBS50": "#1a6447", "SBS51": "#e78492", "SBS52": "#30876c", "SBS53": "#9d4d7c", "SBS54": "#919d5b", "SBS55": "#9d70ac", "SBS56": "#5b6f34", "SBS57": "#65659c", "SBS58": "#c9a865", "SBS59": "#a1455d", "SBS60": "#5e622c", "SBS84": "#b66057", "SBS85": "#dca173", "DBS1": "#855524", "DBS2": "#9f7846", "DBS3": "#7951d0", "DBS4": "#73d053", "DBS5": "#b969e9", "DBS6": "#91ba2c", "DBS7": "#3656ca", "DBS8": "#b4b42f", "DBS9": "#5276ec", "DBS10": "#daae36", "DBS11": "#9e40b5", "ID1": "#de3860", "ID2": "#41ac2f", "ID3": "#7951d0", "ID4": "#73d053", "ID5": "#b969e9", "ID6": "#91ba2c", "ID7": "#9e40b5", "ID8": "#43c673", "ID9": "#dd4cb0", "ID10": "#3d9332", "ID11": "#de77dd", "ID12": "#7bad47", "ID13": "#9479e8", "ID14": "#487b21", "ID15": "#a83292", "ID16": "#83c67d", "ID17": "#664db1", "1": "#b66057", "2": "#dca173", "3": "#855524", "4": "#9f7846", "5": "#7951d0", "6": "#73d053", "7": "#b969e9", "8": "#91ba2c", "9": "#3656ca", "10": "#b4b42f", "11": "#5276ec", "12": "#daae36", "13": "#9e40b5", "14": "#de3860", "15": "#41ac2f", "16": "#7951d0", "17": "#73d053", "18": "#b969e9", "19": "#91ba2c", "20": "#9e40b5", "21": "#43c673", "22": "#dd4cb0", "23": "#3d9332", "24": "#de77dd", "25": "#7bad47", "26": "#9479e8", "27": "#487b21", "28": "#a83292", "29": "#83c67d", "30": "#664db1"}
+  colors = {"SBS1": "#c0c0c0", "SBS2": "#41ac2f", "SBS3": "#7951d0", "SBS4": "#73d053", "SBS5": "#b969e9", "SBS6": "#91ba2c", "SBS7a": "#b4b42f", "SBS7b": "#5276ec", "SBS7c": "#daae36", "SBS7d": "#9e40b5", "SBS8": "#43c673", "SBS9": "#dd4cb0", "SBS10a": "#3d9332", "SBS10b": "#de77dd", "SBS11": "#7bad47", "SBS12": "#9479e8", "SBS13": "#487b21", "SBS14": "#a83292", "SBS15": "#83c67d", "SBS16": "#664db1", "SBS17a": "#e18d28", "SBS17b": "#588de5", "SBS18": "#e2672a", "SBS19": "#34c7dd", "SBS20": "#cf402b", "SBS21": "#5acdaf", "SBS22": "#d74587", "SBS23": "#428647", "SBS24": "#7b51a7", "SBS25": "#b4ba64", "SBS26": "#646cc1", "SBS27": "#a27f1f", "SBS28": "#3b63ac", "SBS29": "#dca653", "SBS30": "#505099", "SBS31": "#7d8529", "SBS32": "#bf8ade", "SBS33": "#516615", "SBS34": "#b65da7", "SBS35": "#57a87a", "SBS36": "#c84249", "SBS37": "#37b5b1", "SBS38": "#a14622", "SBS39": "#58b5e1", "SBS40": "#ba6e2f", "SBS41": "#589ed8", "SBS42": "#e98261", "SBS43": "#3176ae", "SBS44": "#656413", "SBS45": "#a19fe2", "SBS46": "#756121", "SBS47": "#7e4a8d", "SBS48": "#326a38", "SBS49": "#dd8abf", "SBS50": "#1a6447", "SBS51": "#e78492", "SBS52": "#30876c", "SBS53": "#9d4d7c", "SBS54": "#919d5b", "SBS55": "#9d70ac", "SBS56": "#5b6f34", "SBS57": "#65659c", "SBS58": "#c9a865", "SBS59": "#a1455d", "SBS60": "#5e622c", "SBS84": "#b66057", "SBS85": "#dca173", "DBS1": "#855524", "DBS2": "#9f7846", "DBS3": "#7951d0", "DBS4": "#73d053", "DBS5": "#b969e9", "DBS6": "#91ba2c", "DBS7": "#3656ca", "DBS8": "#b4b42f", "DBS9": "#5276ec", "DBS10": "#daae36", "DBS11": "#9e40b5", "ID1": "#c0c0c0", "ID2": "#41ac2f", "ID3": "#7951d0", "ID4": "#73d053", "ID5": "#b969e9", "ID6": "#91ba2c", "ID7": "#9e40b5", "ID8": "#43c673", "ID9": "#dd4cb0", "ID10": "#3d9332", "ID11": "#de77dd", "ID12": "#7bad47", "ID13": "#9479e8", "ID14": "#487b21", "ID15": "#a83292", "ID16": "#83c67d", "ID17": "#664db1", "1": "#b66057", "2": "#dca173", "3": "#855524", "4": "#9f7846", "5": "#7951d0", "6": "#73d053", "7": "#b969e9", "8": "#91ba2c", "9": "#3656ca", "10": "#b4b42f", "11": "#5276ec", "12": "#daae36", "13": "#9e40b5", "14": "#de3860", "15": "#41ac2f", "16": "#7951d0", "17": "#73d053", "18": "#b969e9", "19": "#91ba2c", "20": "#9e40b5", "21": "#43c673", "22": "#dd4cb0", "23": "#3d9332", "24": "#de77dd", "25": "#7bad47", "26": "#9479e8", "27": "#487b21", "28": "#a83292", "29": "#83c67d", "30": "#664db1"}
+  if custom_colors is not None:
+    for sc in custom_colors:
+      s, c = sc.split('=')
+      colors[s] = c
   
   if vertical:
     import matplotlib.style
@@ -180,8 +185,8 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
                 y = 0.5 * patch.get_height() + bl[1] - 0.3
                 ax.text(x,y, '%s\n%s\n%d%%' % (order[j], descriptions[j], data[i][j]), ha='center')
               else:
-                # signature, percentage
-                ax.text(x,y, '%s\n%d%%' % (order[j], data[i][j]), ha='center')
+                # signature
+                ax.text(x,y, '%s' % (order[j],), ha='center')
             elif data[i][j] > 5:
               # signature, percentage
               ax.text(x,y, '%s\n%d%%' % (order[j], data[i][j]), ha='center')
@@ -204,11 +209,12 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Plot signature breakdown')
   parser.add_argument('--threshold', default=0.05, type=float, help='ignore sigs below this')
-  parser.add_argument('--description_threshold', default=10, type=int, help='show description if above this value')
+  parser.add_argument('--description_threshold', default=10, type=float, help='show description if above this value')
   parser.add_argument('--order', nargs='+', required=False, help='order of signatures')
+  parser.add_argument('--colors', nargs='+', required=False, help='custom signature colors of the form Sig=Color...')
   parser.add_argument('--descriptions', nargs='+', required=False, help='ignore sigs below this')
   parser.add_argument('--target', default='sigs.png', required=False, help='output file')
-  parser.add_argument('--show_signature', action='store_true', help='more logging')
+  parser.add_argument('--show_signature', action='store_true', help='show signature name on graph')
   parser.add_argument('--highlight', nargs='*', required=False, help='signatures to highlight')
   parser.add_argument('--xlabel', required=False, help='x axis label')
   parser.add_argument('--ylabel', required=False, help='y axis label')
@@ -230,4 +236,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_cols, args.denormalize, args.transparent)
+  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_cols, args.denormalize, args.transparent, args.colors)

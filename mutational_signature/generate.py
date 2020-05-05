@@ -23,6 +23,8 @@ import count_maf
 
 colors = ["#c0c0c0", "#41ac2f", "#7951d0", "#73d053", "#b969e9", "#91ba2c", "#b4b42f", "#5276ec", "#daae36", "#9e40b5", "#43c673", "#dd4cb0", "#3d9332", "#de77dd", "#7bad47", "#9479e8", "#487b21", "#a83292", "#83c67d", "#664db1", "#e18d28", "#588de5", "#e2672a", "#34c7dd", "#cf402b", "#5acdaf", "#d74587", "#428647", "#7b51a7", "#b4ba64", "#646cc1", "#a27f1f", "#3b63ac", "#dca653", "#505099", "#7d8529", "#bf8ade", "#516615", "#b65da7", "#57a87a", "#c84249", "#37b5b1", "#a14622", "#58b5e1", "#ba6e2f", "#589ed8", "#e98261", "#3176ae", "#656413", "#a19fe2", "#756121", "#7e4a8d", "#326a38", "#dd8abf", "#1a6447", "#e78492", "#30876c", "#9d4d7c", "#919d5b", "#9d70ac", "#5b6f34", "#65659c", "#c9a865", "#a1455d", "#5e622c", "#b66057", "#dca173", "#855524", "#9f7846", "#7951d0", "#73d053", "#b969e9", "#91ba2c", "#3656ca", "#b4b42f", "#5276ec", "#daae36", "#9e40b5", "#de3860", "#41ac2f", "#7951d0", "#73d053", "#b969e9", "#91ba2c", "#9e40b5", "#43c673", "#dd4cb0", "#3d9332", "#de77dd", "#7bad47", "#9479e8", "#487b21", "#a83292", "#83c67d", "#664db1", "#b66057", "#dca173", "#855524", "#9f7846", "#7951d0", "#73d053", "#b969e9", "#91ba2c", "#3656ca", "#b4b42f", "#5276ec", "#daae36", "#9e40b5", "#de3860", "#41ac2f", "#7951d0", "#73d053", "#b969e9", "#91ba2c", "#9e40b5", "#43c673", "#dd4cb0", "#3d9332", "#de77dd", "#7bad47", "#9479e8", "#487b21", "#a83292", "#83c67d", "#664db1"]
 
+SUFFIXES = ['', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+
 def cosine(a, b):
   # make vectors
   keys = set(list(a.keys()) + list(b.keys()))
@@ -54,21 +56,33 @@ def bootstrap(X, all_mutations):
     X_bs.append(row_bs)
   return X_bs
 
-def generate(counts, components, use_proportion, stats, min_mutation_proportion, compare_to_fn, compare_to_matches, bootstraps, bootstrap_plot, component_plot):
+def convert_context(c):
+  '''
+    CGT>A -> CGAT
+  '''
+  return '{}{}{}{}'.format(c[0], c[1], c[4], c[2])
+
+def generate(counts, components, use_proportion, stats, min_mutation_proportion, compare_to_fn, compare_to_matches, bootstraps, bootstrap_plot, component_plot, signature_file):
   logging.info('processing %i count files to generate %s components...', len(counts), components)
 
   contexts = set()
   samples = collections.defaultdict(dict)
   for count_file in counts:
-    sample = count_file.split('/')[-1].split('.')[0]
+    logging.info('processing %s...', count_file)
+    #sample = count_file.split('/')[-1].split('.')[0]
+    sample = count_file.split('/')[-1]
     for row in csv.DictReader(open(count_file, 'r'), delimiter='\t'):
+      # TODO filter on sbs (for now)
+      if len(row['Variation']) != 5 or row['Variation'][3] != '>': # ACC>T
+        logging.debug('skipping context %s', row['Variation'])
+        continue
       # expct Variation Count Probability
       contexts.add(row['Variation'])
       if use_proportion:
         samples[sample][row['Variation']] = float(row['Probability'])
       else:
         samples[sample][row['Variation']] = int(row['Count'])
-  logging.info('found %i contexts in %i samples', len(contexts), len(counts))
+  logging.info('found %i contexts in %i samples: %s', len(contexts), len(counts), contexts)
 
   X = []
   contexts_list = sorted(list(contexts))
@@ -136,6 +150,12 @@ def generate(counts, components, use_proportion, stats, min_mutation_proportion,
   else:
     Xs.append(X)
 
+  if signature_file is not None:
+    # header
+    logging.info('writing signatures to %s...', signature_file)
+    sig_fh = open(signature_file, 'w')
+    sig_fh.write('Name\t{}\n'.format('\t'.join([convert_context(c) for c in contexts_list])))
+
   #for components in range(3,16): # components is a list of signature-number to try
   component_results = []
   for component in components:
@@ -180,12 +200,6 @@ def generate(counts, components, use_proportion, stats, min_mutation_proportion,
 
     H_result = H_norm
 
-    logging.info('writing signatures...')
-    sys.stdout.write('Name\t{}\n'.format('\t'.join(contexts_list)))
-    for sig_num, sig in enumerate(H_result):
-      total = sum(sig)
-      sys.stdout.write('Signature.{}\t{}\n'.format(sig_num + 1, '\t'.join(['{:.6f}'.format(x / total) for x in sig])))
-
     if compare_to_fn is not None:
       logging.info('comparing to %s...', compare_to_fn)
       sys.stdout.write('\n*Comparison*\nGeneratedSignature\tProvidedSignature\tSimilarity\n')
@@ -203,6 +217,22 @@ def generate(counts, components, use_proportion, stats, min_mutation_proportion,
         for key, value in sorted(result[our_sig].items(), key=lambda item: -item[1])[:compare_to_matches]:
           sys.stdout.write('{}\t{}\t{:.2f}\n'.format(our_sig, key, value))
           highlight.add(key)
+
+    if signature_file is not None:
+      logging.info('writing component %i signatures to %s...', component, signature_file)
+      closest_seen = set()
+      for sig_num, sig in enumerate(H_result):
+        total = sum(sig)
+        if compare_to_fn is None:
+          sig_fh.write('SigN{}.{}\t{}\n'.format(component, sig_num + 1, '\t'.join(['{:.6f}'.format(x / total) for x in sig])))
+        else:
+          closest = sorted(result['Signature.{}'.format(sig_num + 1)].items(), key=lambda item: -item[1])[0]
+          for suffix in SUFFIXES:
+            closest_cand = ''.join([closest[0], suffix]) 
+            if closest_cand not in closest_seen:
+              closest_seen.add(closest_cand)
+              break
+          sig_fh.write('SigN{}.{}\t{}\n'.format(component, closest_cand, '\t'.join(['{:.6f}'.format(x / total) for x in sig])))
 
     if bootstrap_plot is not None and bootstraps > 0:
       bootstrap_fn = bootstrap_plot.replace('.png', '_{}.png'.format(component))
@@ -273,6 +303,7 @@ if __name__ == '__main__':
   parser.add_argument('--bootstraps', required=False, default=0, type=int, help='number of bootstraps to perform')
   parser.add_argument('--bootstrap_plot', required=False, help='pca plot of bootstraps')
   parser.add_argument('--component_plot', required=False, help='plot of component quality')
+  parser.add_argument('--signature_file', required=False, help='write signatures to this file')
   # logging
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
@@ -281,4 +312,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  generate(args.counts, args.components, args.use_proportion, args.stats, args.min_mutation_proportion, args.compare_to, args.compare_to_matches, args.bootstraps, args.bootstrap_plot, args.component_plot)
+  generate(args.counts, args.components, args.use_proportion, args.stats, args.min_mutation_proportion, args.compare_to, args.compare_to_matches, args.bootstraps, args.bootstrap_plot, args.component_plot, args.signature_file)

@@ -64,8 +64,11 @@ def compare(signatures, signatures2, measure, out):
       #row = [float(fields[signature_classes_2.index(signature_classes[idx])]) for idx in range(1, len(fields))]
       row = []
       for idx in range(1, len(fields)):
-        jdx = signature_classes_2.index(signature_classes[idx - 1])
-        row.append(float(fields[jdx + 1]))
+        try:
+          jdx = signature_classes_2.index(signature_classes[idx - 1]) # matching context
+          row.append(float(fields[jdx + 1]))
+        except IndexError:
+          logging.debug('skipping idx %i from %i', idx-1, len(signature_classes))
 
       rows2.append(np.array(row))
       logging.debug('row sum is %.2f', sum(rows2[-1]))
