@@ -227,7 +227,7 @@ if __name__ == '__main__':
   parser.add_argument('--title', required=False, help='title')
   parser.add_argument('--fontsize', required=False, default=12, type=int, help='plot font size')
   parser.add_argument('--vertical', action='store_true', help='plot vertically')
-  parser.add_argument('--denormalize', action='store_true', help='do not constrain to 100%')
+  parser.add_argument('--denormalize', action='store_true', help='do not constrain to 100 percent')
   parser.add_argument('--transparent', action='store_true', help='transparent')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
