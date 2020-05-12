@@ -183,13 +183,13 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
               if descriptions is not None and descriptions[j] != '':
                 # signature, description, percentage
                 y = 0.5 * patch.get_height() + bl[1] - 0.3
-                ax.text(x,y, '%s\n%s\n%d%%' % (order[j], descriptions[j], data[i][j]), ha='center')
+                ax.text(x,y, '%s\n%s\n%d%%' % (order[j], descriptions[j], 100 * data[i][j]), ha='center')
               else:
                 # signature
                 ax.text(x,y, '%s' % (order[j],), ha='center')
             elif data[i][j] > 5:
               # signature, percentage
-              ax.text(x,y, '%s\n%d%%' % (order[j], data[i][j]), ha='center')
+              ax.text(x,y, '%s\n%d%%' % (order[j], 100 * data[i][j]), ha='center')
             # else nothing
   
     ax.set_yticks(sample_id)
@@ -209,7 +209,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Plot signature breakdown')
   parser.add_argument('--threshold', default=0.05, type=float, help='ignore sigs below this')
-  parser.add_argument('--description_threshold', default=10, type=float, help='show description if above this value')
+  parser.add_argument('--description_threshold', default=0.1, type=float, help='show description if above this value')
   parser.add_argument('--order', nargs='+', required=False, help='order of signatures')
   parser.add_argument('--colors', nargs='+', required=False, help='custom signature colors of the form Sig=Color...')
   parser.add_argument('--descriptions', nargs='+', required=False, help='ignore sigs below this')
