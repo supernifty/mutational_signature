@@ -37,13 +37,13 @@ SBS30	NTHL1 (BER)	TCC>TTC
 SBS31	Platinum treatment	CCC>CTC
 SBS32	Azathioprine treatment	ACT>ATT
 SBS33	?	TTG>TCG
-SBS34	Aging for some cancers	ATT>AAT
+SBS34	?	ATT>AAT
 SBS35	Platinum treatment	CCC>CTC
 SBS36	MUTYH (BER)	TCT>TAT
 SBS37	?	ATA>ACA
 SBS38	UV?	CCA>CAA
 SBS39	?	TCT>TGT
-SBS40	?	TCA>TTA
+SBS40	Aging for some cancers	TCA>TTA
 SBS41	?	TTT>TGT
 SBS42	Haloalkane exposure	GCC>GTC
 SBS43	Artefact?	GTG>GGG
