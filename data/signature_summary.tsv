@@ -37,7 +37,7 @@ SBS30	NTHL1 (BER)	TCC>TTC
 SBS31	Platinum treatment	CCC>CTC
 SBS32	Azathioprine treatment	ACT>ATT
 SBS33	?	TTG>TCG
-SBS34	?	ATT>AAT
+SBS34	Aging for some cancers	ATT>AAT
 SBS35	Platinum treatment	CCC>CTC
 SBS36	MUTYH (BER)	TCT>TAT
 SBS37	?	ATA>ACA
