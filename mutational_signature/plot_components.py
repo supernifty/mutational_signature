@@ -4,6 +4,7 @@
 '''
 
 import argparse
+import collections
 import csv
 import logging
 import sys
@@ -15,6 +16,8 @@ matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 
+import matplotlib.font_manager
+
 from pylab import rcParams
 # rcParams['figure.figsize'] = 16, 10
 #FIGSIZE = (16, 8)
@@ -23,21 +26,41 @@ HEIGHT_MULTIPLIER = 1.8
 WIDTH_MULTIPLIER = 0.6
 DPI=300
 
-def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_cols=1, denormalize=False, transparent=False, custom_colors=None):
+def formatter_container(vals):
+  def formatter(val, loc):
+    return vals[val]
+
+  return formatter
+
+def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_fontsize=None, legend_cols=1, denormalize=False, transparent=False, custom_colors=None, fontfamily=None, indicators=None, indicator_cmaps=None, indicator_cat=None):
   logging.info('reading from stdin with threshold %f and order %s...', threshold, order)
   rcParams.update({'font.size': fontsize})
+
+  if legend_fontsize is not None:
+    rcParams.update({'legend.fontsize': legend_fontsize, 'figure.titlesize': legend_fontsize, 'axes.titlesize': legend_fontsize})
+    
+  if fontfamily is not None:
+    rcParams.update({'font.family': fontfamily})
 
   header = next(sigs)
   logging.info('header is %s', header)
 
+  if indicators is None:
+    indicators = []
+  if indicator_cat is None:
+    indicator_cat = []
+  else:
+    indicator_vals = collections.defaultdict(list)
+
   if order is None:
-    order = header[1:]
+    order = [x for x in header[1:] if x not in indicators]
 
   logging.info('plotting up to %i sig: %s...', len(order), order)
 
   samples = []
   data = []
   variants = []
+  data_ind = collections.defaultdict(list)
   seen = set()
   seen_index = set()
 
@@ -56,6 +79,25 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       variants.append(float(row[header.index('Variants')]))
     else:
       variants.append(100.0) # do not consider variant count
+
+    for i in indicators:
+      val = row[header.index(i)]
+      if i in indicator_cat:
+        if val not in indicator_vals[i]:
+          indicator_vals[i].append(val)
+        #data_ind[i].append([indicator_vals[i].index(val)])
+        data_ind[i].append(val)
+      else:
+        if val == '':
+          logging.debug('empty value for %s on row %i', i, idx)
+          data_ind[i].append([0.0])
+        else:
+          data_ind[i].append([float(row[header.index(i)])])
+
+  # sort the categorical indicators
+  for i in indicator_cat:
+    indicator_vals[i] = sorted(indicator_vals[i])
+    data_ind[i] = [ [indicator_vals[i].index(x)] for x in data_ind[i] ]
 
   logging.info('saw %i sigs...', len(seen_index))
 
@@ -144,7 +186,16 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     else:
       figure_height = figure_height or 12
       fig = plt.figure(figsize=(figure_width, figure_width))
-    ax = fig.add_subplot(111)
+
+    if len(indicators) > 0:
+      grid = plt.GridSpec(1, 40, hspace=0, wspace=0.2)
+      ax = fig.add_subplot(grid[:, 0:-len(indicators)])
+      axis = []
+      for i in range(len(indicators)):
+        axis.append(fig.add_subplot(grid[:, -i-1], sharey=ax))
+        axis[-1].axes.get_yaxis().set_visible(False)
+    else:
+      ax = fig.add_subplot(111)
 
     data = list(reversed(data))
     samples = list(reversed(samples))
@@ -154,12 +205,12 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     sample_id = np.arange(len(samples))
   
     for i in range(len(order)): # each signature
-      vals = [row[i] for row in data] # all values for that signature
+      vals = [100 * row[i] for row in data] # all values for that signature
       if highlight is None or len(highlight) == 0 or order[i] in highlight:
-        logging.info('highlighting %s', order[i])
+        logging.debug('highlighting %s', order[i])
         alpha = 0.9
       else:
-        logging.info('not highlighting %s', order[i])
+        logging.debug('not highlighting %s', order[i])
         alpha = 0.5
   
       # choose a new color
@@ -171,25 +222,33 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
         patch_handles.append(ax.barh(sample_id, vals, color=color, alpha=alpha, align='center', left=left, label=order[i]))
       # accumulate the left-hand offsets
       left += vals
+
+    ax.set_xlim([0, 100])
   
+    #PATCH_OFFSET=-0.3
+    PATCH_OFFSET=-0.2
+    PATCH_OFFSET_LONG=-0.3
+
     # go through all of the bar segments and annotate
     for j in range(len(patch_handles)):
       for i, patch in enumerate(patch_handles[j].get_children()):
           if data[i][j] >= 0.01:
             bl = patch.get_xy()
             x = 0.5 * patch.get_width() + bl[0]
-            y = 0.5 * patch.get_height() + bl[1] - 0.2
+            y = 0.5 * patch.get_height() + bl[1] - PATCH_OFFSET
             if show_name and data[i][j] > description_threshold:
               if descriptions is not None and descriptions[j] != '':
                 # signature, description, percentage
-                y = 0.5 * patch.get_height() + bl[1] - 0.3
-                ax.text(x,y, '%s\n%s\n%d%%' % (order[j], descriptions[j], 100 * data[i][j]), ha='center')
+                y = 0.5 * patch.get_height() + bl[1] - PATCH_OFFSET_LONG
+                ax.annotate('%s\n%s\n%d%%' % (order[j], descriptions[j], 100 * data[i][j]), (x, y), ha='center')
               else:
                 # signature
-                ax.text(x,y, '%s' % (order[j],), ha='center')
+                logging.debug('placing text %s at %.2f %.2f with patch at %.2f %.2f width %.2f', order[j], x, y, bl[0], bl[1], patch.get_width())
+                #ax.text(x,y, '%s' % (order[j],), ha='center')
+                ax.annotate(order[j], (x, y), ha='center')
             elif data[i][j] > 5:
               # signature, percentage
-              ax.text(x,y, '%s\n%d%%' % (order[j], 100 * data[i][j]), ha='center')
+              ax.text('%s\n%d%%' % (order[j], 100 * data[i][j]), (x, y), ha='center')
             # else nothing
   
     ax.set_yticks(sample_id)
@@ -200,9 +259,32 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
   
     # place legend at right based on https://stackoverflow.com/questions/10101700/moving-matplotlib-legend-outside-of-the-axis-makes-it-cutoff-by-the-figure-box/10154763#10154763
     handles, labels = ax.get_legend_handles_labels()
-    lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0)
+   #fig.savefig(target, transparent=True, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    
+    if len(indicators) > 0:
+      logging.info(data_ind)
+      for i in range(len(indicators)):
+        # and the legend
+        cbaxes = fig.add_axes([0.91, 0.11 + 0.11 * i, 0.01, 0.1]) # left bottom width height - position of legend
+        if indicators[i] in indicator_cat:
+          vals = indicator_vals[indicators[i]].copy()
+          im = axis[i].imshow(data_ind[indicators[i]], cmap=plt.cm.get_cmap(indicator_cmaps[i], len(vals)), aspect="auto")
+          logging.debug('indicator_vals: %s', vals)
+          #formatter = plt.FuncFormatter(lambda val, loc: vals[val])
+          formatter = plt.FuncFormatter(formatter_container(vals))
+          cbar = axis[i].figure.colorbar(im, ax=axis[i], cax=cbaxes, ticks=range(len(vals)), format=formatter) #fraction=0.4, pad=0.2, anchor=(0.1, 0.4)) #, fraction=0.04, pad=0.01, shrink=0.5)
+          im.set_clim(-0.5, len(vals) - 0.5)
+        else:
+          im = axis[i].imshow(data_ind[indicators[i]], cmap=indicator_cmaps[i], aspect="auto")
+          cbar = axis[i].figure.colorbar(im, ax=axis[i], cax=cbaxes) #fraction=0.4, pad=0.2, anchor=(0.1, 0.4)) #, fraction=0.04, pad=0.01, shrink=0.5)
+        cbar.set_label(indicators[i])
+        axis[i].set_xticklabels([''] + [indicators[i]], rotation=90)
+      #cb = plt.colorbar(axi, cax=cbaxes)  
+      lgd = axis[-len(indicators)].legend(handles, labels, loc='upper left', bbox_to_anchor=(1.1,1.0), borderaxespad=0.1)
+    else:
+      lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0)
     lgd.get_frame().set_edgecolor('#000000')
-    #fig.savefig(target, transparent=True, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+ 
     fig.savefig(target, transparent=transparent, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
   plt.close('all')
 
@@ -226,9 +308,14 @@ if __name__ == '__main__':
   parser.add_argument('--legend_cols', required=False, type=int, default=1, help='legend cols')
   parser.add_argument('--title', required=False, help='title')
   parser.add_argument('--fontsize', required=False, default=12, type=int, help='plot font size')
+  parser.add_argument('--fontfamily', required=False, help='plot font family')
+  parser.add_argument('--legend_fontsize', required=False, type=int, help='legend font size')
   parser.add_argument('--vertical', action='store_true', help='plot vertically')
   parser.add_argument('--denormalize', action='store_true', help='do not constrain to 100 percent')
   parser.add_argument('--transparent', action='store_true', help='transparent')
+  parser.add_argument('--indicators', nargs='*', required=False, help='columns to use as indicators')
+  parser.add_argument('--indicator_cmaps', nargs='*', required=False, help='columns to use as indicators')
+  parser.add_argument('--indicator_cat', nargs='*', required=False, help='categorical indicators')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -236,4 +323,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_cols, args.denormalize, args.transparent, args.colors)
+  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_fontsize, args.legend_cols, args.denormalize, args.transparent, args.colors, args.fontfamily, args.indicators, args.indicator_cmaps, args.indicator_cat)

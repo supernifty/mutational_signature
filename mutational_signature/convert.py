@@ -38,7 +38,7 @@ def main(conversion):
     for sig in sorted(result.keys()):
       sys.stdout.write('{}\t{}\n'.format(sig, '\t'.join([result[sig][context] for context in contexts_list])))
 
-  elif conversion == 'dbs':
+  elif conversion == 'db':
     # Mutation Type,DBS1,DBS2,DBS3,DBS4,DBS5,DBS6,DBS7,DBS8,DBS9,DBS10,DBS11
     # AC>CA,4.97E-05,3.74E-04,6.35E-03,4.14E-03,2.14E-03,2.66E-03,4.59E-02,2.15E-01,2.46E-02,9.63E-03,1.37E-03
     header = sys.stdin.readline().strip('\r\n').split(',')
