@@ -256,6 +256,8 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--bed', required=True, help='regions to consider')
+  parser.add_argument('--indels', action='store_true', help='consider indels') # not supported
+  parser.add_argument('--doublets', action='store_true', help='consider doublets') # not supported
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:

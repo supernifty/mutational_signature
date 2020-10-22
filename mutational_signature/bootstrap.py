@@ -17,7 +17,7 @@ import plotme.box
 
 import mutational_signature.decompose
 
-def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possible=True, out=sys.stdout, subsample=1.0, subsample_count=None, plot=None, plot_title=None, error_probability=0.01):
+def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possible=True, out=sys.stdout, subsample=1.0, subsample_count=None, plot=None, plot_title=None, error_probability=0.01, signature_sum=None):
   confidence=[float(c) for c in confidence]
   logging.info('reading counts from stdin...')
   variants = 0
@@ -48,11 +48,16 @@ def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possibl
 
   point_error = point_estimate['error'][0]
   point_signatures = {k[0]: k[1] / point_estimate['total'] for k in zip(point_estimate['signature_names'], point_estimate['signature_values'])}
+
+  if signature_sum is not None and len(signature_sum) > 0:
+    point_signatures['+'.join(signature_sum)] = sum([point_signatures[name] for name in signature_sum])
+
   logging.info('point error is %f; signatures are %s...', point_error, point_signatures)
   
   logging.info('bootstrapping from %i variants...', len(samples))
 
   bootstrap_error = []
+  bootstrap_count = []
   bootstrap_signatures = collections.defaultdict(list)
   
   for i in range(bootstraps):
@@ -70,7 +75,7 @@ def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possibl
     else:
       subsampled = int(subsample * len(samples))
       # this way adds variability to the number of mutations
-      logging.info('selecting approximately %i contexts...', subsampled)
+      logging.info('selecting approximately %i contexts from %i...', subsampled, len(samples))
       subsampled = 0
       for sample in samples: # every mutation
         if random.random() < subsample: # we'll take it
@@ -87,7 +92,12 @@ def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possibl
     bootstrap_estimate = mutational_signature.decompose.decompose(signatures=signatures, counts_fh=counts_fh, out=dummy, metric='cosine', seed=None, evaluate=None, solver='basin', max_sigs=None, context_cutoff=context_cutoff, error_contribution=False)
     for name, value in zip(bootstrap_estimate['signature_names'], bootstrap_estimate['signature_values']):
       bootstrap_signatures[name].append(value / bootstrap_estimate['total'])
+
+    if signature_sum is not None and len(signature_sum) > 0:
+      bootstrap_signatures['+'.join(signature_sum)].append(sum([bootstrap_signatures[name][-1] for name in signature_sum]))
+
     bootstrap_error.append(bootstrap_estimate['error'][0])
+    bootstrap_count.append(subsampled)
     
     logging.info('bootstrap %i: done', i + 1)
 
@@ -95,6 +105,8 @@ def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possibl
   out.write('Name\tPoint\tMean\tSD\t{}\tMin\tMax\tValues\n'.format('\t'.join([str(c) for c in confidence])))
   values = [numpy.percentile(bootstrap_error, c * 100) for c in confidence]
   out.write('Error\t{:.3f}\t{:.3f}\t{:.3f}\t{}\t{:.3f}\t{:.3f}\t{}\n'.format(point_error, numpy.mean(bootstrap_error), numpy.std(bootstrap_error), '\t'.join(['{:.3f}'.format(v) for v in values]), min(bootstrap_error), max(bootstrap_error), ','.join(['{:.2f}'.format(x) for x in bootstrap_error])))
+  values = [numpy.percentile(bootstrap_count, c * 100) for c in confidence]
+  out.write('Count\t{:.3f}\t{:.3f}\t{:.3f}\t{}\t{:.3f}\t{:.3f}\t{}\n'.format(len(samples), numpy.mean(bootstrap_count), numpy.std(bootstrap_count), '\t'.join(['{:.3f}'.format(v) for v in values]), min(bootstrap_count), max(bootstrap_count), ','.join(['{}'.format(x) for x in bootstrap_count])))
   for sig in sorted(bootstrap_signatures.keys()):
     values = [numpy.percentile(bootstrap_signatures[sig], c * 100) for c in confidence]
     out.write('{}\t{:.3f}\t{:.3f}\t{:.3f}\t{}\t{:.3f}\t{:.3f}\t{}\n'.format(sig, point_signatures[sig], numpy.mean(bootstrap_signatures[sig]), numpy.std(bootstrap_signatures[sig]), '\t'.join(['{:.3f}'.format(v) for v in values]), min(bootstrap_signatures[sig]), max(bootstrap_signatures[sig]), ','.join(['{:.2f}'.format(x) for x in bootstrap_signatures[sig]])))
@@ -110,6 +122,10 @@ def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possibl
 
     for value in bootstrap_error:
       fh.write('{}\t{}\t{}\n'.format('Error', 'Pct', value))
+
+    # don't write count it overwhelms the plot
+    #for value in bootstrap_count:
+    #  fh.write('{}\t{}\t{}\n'.format('Count', 'Pct', value))
 
     fh.seek(0)
     plotme.box.plot_box(fh, plot, 'x', 'y', 'z', plot_title or 'Variability in bootstrapped signatures', x_label=None, y_label=None, x_order=None, y_order=None, fig_width=16, fig_height=8, fontsize=8, significance=None, significance_nobar=False, separator=False, include_zero=True, x_label_rotation='vertical', annotate=None, include_other=1)
@@ -128,6 +144,7 @@ if __name__ == '__main__':
   parser.add_argument('--plot_title', required=False, help='title for boxplot')
   parser.add_argument('--all_contexts_possible', action='store_true', help='set empty contexts to have a count of 1')
   parser.add_argument('--error_probability', required=False, default=0.01, help='probability of a draw being a random context')
+  parser.add_argument('--signature_sum', required=False, nargs='+', help='Show the variation in a sum of signatures')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -135,5 +152,5 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  main(args.signatures, args.count, args.confidence, subsample=args.subsample, subsample_count=args.subsample_count, all_contexts_possible=args.all_contexts_possible, plot=args.plot, plot_title=args.plot_title, error_probability=args.error_probability)
+  main(args.signatures, args.count, args.confidence, subsample=args.subsample, subsample_count=args.subsample_count, all_contexts_possible=args.all_contexts_possible, plot=args.plot, plot_title=args.plot_title, error_probability=args.error_probability, signature_sum=args.signature_sum)
 
