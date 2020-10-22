@@ -22,6 +22,8 @@ COMP_TX = {'+': '-', '-': '+', None: None}
 INDEL_COMP = {'A': 'T', 'C': 'C', 'G': 'C', 'T': 'T'} # normalize to C or T
 
 EXCLUDE_UTR=True # transcription bias
+SKIP_ALT_CHROM=True
+SKIP_M=True
 
 def normalize_sbs(v, strand_tx, strand_exon):
   '''
@@ -41,7 +43,7 @@ def normalize_doublet(v):
     # reverse it
     v = '{}{}>{}{}'.format(COMP[v[1]], COMP[v[0]], COMP[v[4]], COMP[v[3]])
     if v not in DOUBLETS:
-      logging.warn('failed to solve doublet %s', v)
+      logging.warning('failed to solve doublet %s', v)
   return v
 
 def update_chroms(required, chroms, genome, next_chrom):
@@ -53,7 +55,7 @@ def update_chroms(required, chroms, genome, next_chrom):
     line = line.strip('\n')
     if line.startswith('>'):
       if next_chrom is None: # first line of file
-        next_chrom = line[1:].split(' ')[0].replace('chr', '')
+        next_chrom = no_chr(line[1:].split(' ')[0])
         logging.debug('reading chrom %s from genome...', next_chrom)
       else:
         # remove previous chromosomes
@@ -61,11 +63,11 @@ def update_chroms(required, chroms, genome, next_chrom):
         seq = []
         logging.info('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
         if required == next_chrom:
-          next_chrom = line[1:].split(' ')[0].replace('chr', '')
+          next_chrom = no_chr(line[1:].split(' ')[0])
           logging.debug('required chrom %s found', next_chrom)
           return next_chrom
         else:
-          next_chrom = line[1:].split(' ')[0].replace('chr', '')
+          next_chrom = no_chr(line[1:].split(' ')[0])
           logging.debug('reading chrom %s from genome...', next_chrom)
     else:
       seq.append(line)
@@ -78,11 +80,14 @@ def update_chroms(required, chroms, genome, next_chrom):
   return None
 
 def no_chr(chrom):
-  return chrom.replace('chr', '')
+  if chrom == 'MT':
+    return 'M'
+  # deals with chrUn_gl000220.1
+  return chrom.split('.')[0].split('_', maxsplit=1)[-1].replace('chr', '').upper()
 
 def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_indels, transcripts=None, exons=None, tx_counts=None):
   if no_chr(variant.CHROM) not in chroms:
-    logging.warn('chromosome %s not found in genome', variant.CHROM)
+    logging.warning('chromosome %s not found in chroms: %s', no_chr(variant.CHROM), chroms.keys())
     return
 
   if variant.POS == 1 or variant.POS > len(chroms[no_chr(variant.CHROM)]):
@@ -170,7 +175,7 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
               break
 
           if microhomology >= del_length:
-            logging.warn('Microhomology calculation went wrong at %s:%i %i del length %i del sequence %s', no_chr(variant.CHROM), variant.POS, microhomology, del_length, deleted_sequence)
+            logging.warning('Microhomology calculation went wrong at %s:%i %i del length %i del sequence %s', no_chr(variant.CHROM), variant.POS, microhomology, del_length, deleted_sequence)
           
           if microhomology > 0:
             category['repeats'] = '5+' if microhomology >= 5 else microhomology
@@ -205,7 +210,7 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     counts[indel_category] += 1
     #logging.debug('indel at %s:%s %s -> %s classified as %s', no_chr(variant.CHROM), variant.POS, variant.REF, variant.ALT[0], indel_category)
     if indel_category not in INDELS:
-      logging.warn('unexpected indel category %s', indel_category)
+      logging.warning('unexpected indel category %s', indel_category)
 
   # no need to look at this indel any more
   if len(variant.REF) != 1 or len(variant.ALT[0]) != 1:
@@ -222,11 +227,11 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
   # pulling in -1 0 +1
   fragment = chroms[no_chr(variant.CHROM)][variant.POS - 2:variant.POS + 1].upper() # potentially could instead skip lower case
   if fragment[1] != variant.REF:
-    logging.warn('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', no_chr(variant.CHROM), variant.POS, variant.REF, fragment[0], fragment[1], fragment[2])
+    logging.warning('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', no_chr(variant.CHROM), variant.POS, variant.REF, fragment[0], fragment[1], fragment[2])
     return
 
   if any([x not in 'ACGT' for x in ''.join([fragment, variant.ALT[0]])]):
-    logging.warn('skipping variant with ill-defined transition {}>{} at {}:{}'.format(fragment, variant.ALT[0], no_chr(variant.CHROM), variant.POS))
+    logging.warning('skipping variant with ill-defined transition {}>{} at {}:{}'.format(fragment, variant.ALT[0], no_chr(variant.CHROM), variant.POS))
     return
     
   v = '{}>{}'.format(fragment, variant.ALT[0]) # TODO multiallele
@@ -242,7 +247,7 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     if last_variant is not None and no_chr(last_variant.CHROM) == no_chr(variant.CHROM) and last_variant.POS == variant.POS - 1:
       doublet = '{}{}>{}{}'.format(last_variant.REF, variant.REF, last_variant.ALT[0], variant.ALT[0])
       if len(doublet) != 5:
-        logging.warn('skipping doublet %s at %s:%i', doublet, no_chr(variant.CHROM), variant.POS)
+        logging.warning('skipping doublet %s at %s:%i', doublet, no_chr(variant.CHROM), variant.POS)
       else:
         doublet = normalize_doublet(doublet)
         counts[doublet] += 1
@@ -326,7 +331,7 @@ def read_transcripts(transcripts):
   txbases = 0
   #bin    name    chrom   strand  txStart txEnd   cdsStart        cdsEnd  exonCount       exonStarts      exonEnds        score   name2   cdsStartStat    cdsEndStat      exonFrames
   for rowline, row in enumerate(csv.DictReader(gzip.open(transcripts, 'rt'), delimiter='\t')):
-    chrom = row['chrom'].replace('chr', '')
+    chrom = no_chr(row['chrom'])
     if chrom not in tree:
       logging.debug('added %s to transcripts. %i exon bases and %i transcript bases so far', chrom, bases, txbases)
       tree[chrom] = intervaltree.IntervalTree()
@@ -372,8 +377,17 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
 
   last_variant = None
   for line, variant in enumerate(vcf_in):
+    if SKIP_ALT_CHROM and '_' in variant.CHROM:
+      logging.info('skipping %s', variant.CHROM)
+      continue
+
+    if SKIP_M and (variant.CHROM == 'M' or variant.CHROM == 'MT'):
+      logging.info('skipping %s', variant.CHROM)
+      continue
+
+
     if no_chr(variant.CHROM) not in chroms_seen:
-      logging.debug('chrom %s seen in vcf', no_chr(variant.CHROM))
+      logging.debug('chrom %s seen in vcf but not in %s', no_chr(variant.CHROM), chroms_seen)
       next_chrom = update_chroms(no_chr(variant.CHROM), chroms, genome_fh, next_chrom)
       chroms_seen.add(no_chr(variant.CHROM))
 
@@ -462,7 +476,7 @@ def maf_to_vcf(maf, sample, sample_col, chrom_col, pos_col, ref_col, alt_col, is
     if sample is not None and row_sample != sample:
       continue
 
-    chrom = get_value(header, chrom_col, row).replace('chr', '')
+    chrom = no_chr(get_value(header, chrom_col, row))
     pos = int(get_value(header, pos_col, row))
     ref = get_value(header, ref_col, row)
     if ref == '-':
@@ -475,7 +489,8 @@ def maf_to_vcf(maf, sample, sample_col, chrom_col, pos_col, ref_col, alt_col, is
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')
   parser.add_argument('--genome', required=True, help='reference genome')
-  parser.add_argument('--vcf', required=True, help='vcf or maf')
+  parser.add_argument('--vcf', required=True, nargs='+', help='vcfs or mafs')
+  parser.add_argument('--out', required=False, nargs='+', help='output files or stdout by default')
   parser.add_argument('--vcf_not_zipped', action='store_true', help='do not try to unzip (only matters for maf)')
   parser.add_argument('--maf_sample', required=False, help='vcf is actually a maf with this sample of interest')
   parser.add_argument('--maf_sample_column', required=False, default='Tumor_Sample_Barcode', help='maf chrom column name')
@@ -494,8 +509,20 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  if args.maf_sample is not None:
-    vcf_in = maf_to_vcf(args.vcf, args.maf_sample, args.maf_sample_column, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column, args.vcf_not_zipped)
-  else:
-    vcf_in = cyvcf2.VCF(args.vcf)
-  count(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=sys.stdout, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, transcripts_fn=args.transcripts)
+  chroms = None
+  for idx, v in enumerate(args.vcf):
+    if args.maf_sample is not None:
+      vcf_in = maf_to_vcf(v, args.maf_sample, args.maf_sample_column, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column, args.vcf_not_zipped)
+    else:
+      vcf_in = cyvcf2.VCF(v)
+    if args.out is None:
+      out = sys.stdout
+      out_fn = 'stdout'
+    else:
+      out = open(args.out[idx], 'w')
+      out_fn = args.out[idx]
+    logging.info('processing %i of %i: %s -> %s...', idx, len(args.vcf), v, out_fn)
+    result = count(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=out, chroms=chroms, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, transcripts_fn=args.transcripts)
+    chroms = result['chroms']
+    logging.debug('chroms is %s', chroms.keys())
+    logging.info('processing %i of %i: %s -> %s: done', idx, len(args.vcf), v, out_fn)
