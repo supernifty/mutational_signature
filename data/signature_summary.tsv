@@ -66,6 +66,7 @@ SBS59	Artefact	GCT>GAT
 SBS60	Artefact	GTG>GGG
 SBS84	AID	GCT>GTT
 SBS85	AID	ATA>AAA
+SBS87	Thiopurine chemotherapy treatment	CCG>CTG
 DBS1	UV	CC>TT
 DBS2	tobacco smoking, age	CC>AA
 DBS3	POLE exonuclease	TT>GG
