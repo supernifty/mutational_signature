@@ -10,6 +10,7 @@ import argparse
 import csv
 import collections
 import gzip
+import itertools
 import logging
 import sys
 
@@ -29,10 +30,12 @@ def normalize_sbs(v, strand_tx, strand_exon):
   '''
     input GAT>G => ATC>C
   '''
-  if v[1] in ('C', 'T'):
+  mid = int((len(v) - 3) / 2)
+  if v[mid] in ('C', 'T'):
     return v, strand_tx, strand_exon # ok
   else:
-    return ''.join([COMP[v[2]], COMP[v[1]], COMP[v[0]], '>', COMP[v[4]]]), COMP_TX[strand_tx], COMP_TX[strand_exon]
+    #return ''.join([COMP[v[2]], COMP[v[1]], COMP[v[0]], '>', COMP[v[-1]]]), COMP_TX[strand_tx], COMP_TX[strand_exon]
+    return ''.join([''.join([COMP[x] for x in v[:-2]][::-1]), '>', COMP[v[-1]]]), COMP_TX[strand_tx], COMP_TX[strand_exon]
 
 DOUBLETS = set(['AC>CA', 'AC>CG', 'AC>CT', 'AC>GA', 'AC>GG', 'AC>GT', 'AC>TA', 'AC>TG', 'AC>TT', 'AT>CA', 'AT>CC', 'AT>CG', 'AT>GA', 'AT>GC', 'AT>TA', 'CC>AA', 'CC>AG', 'CC>AT', 'CC>GA', 'CC>GG', 'CC>GT', 'CC>TA', 'CC>TG', 'CC>TT', 'CG>AT', 'CG>GC', 'CG>GT', 'CG>TA', 'CG>TC', 'CG>TT', 'CT>AA', 'CT>AC', 'CT>AG', 'CT>GA', 'CT>GC', 'CT>GG', 'CT>TA', 'CT>TC', 'CT>TG', 'GC>AA', 'GC>AG', 'GC>AT', 'GC>CA', 'GC>CG', 'GC>TA', 'TA>AT', 'TA>CG', 'TA>CT', 'TA>GC', 'TA>GG', 'TA>GT', 'TC>AA', 'TC>AG', 'TC>AT', 'TC>CA', 'TC>CG', 'TC>CT', 'TC>GA', 'TC>GG', 'TC>GT', 'TG>AA', 'TG>AC', 'TG>AT', 'TG>CA', 'TG>CC', 'TG>CT', 'TG>GA', 'TG>GC', 'TG>GT', 'TT>AA', 'TT>AC', 'TT>AG', 'TT>CA', 'TT>CC', 'TT>CG', 'TT>GA', 'TT>GC', 'TT>GG'])
 
@@ -85,7 +88,7 @@ def no_chr(chrom):
   # deals with chrUn_gl000220.1
   return chrom.split('.')[0].split('_', maxsplit=1)[-1].replace('chr', '').upper()
 
-def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_indels, transcripts=None, exons=None, tx_counts=None):
+def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_indels, transcripts=None, exons=None, tx_counts=None, mer=3):
   if no_chr(variant.CHROM) not in chroms:
     logging.warning('chromosome %s not found in chroms: %s', no_chr(variant.CHROM), chroms.keys())
     return
@@ -225,8 +228,9 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
   # 0 1 2 -> my indexes
   # 1 2 3 -> vcf indexes
   # pulling in -1 0 +1
-  fragment = chroms[no_chr(variant.CHROM)][variant.POS - 2:variant.POS + 1].upper() # potentially could instead skip lower case
-  if fragment[1] != variant.REF:
+  context_extension = int((mer - 1) / 2) # 3 -> 1, 5 -> 2, etc
+  fragment = chroms[no_chr(variant.CHROM)][variant.POS - 1 - context_extension:variant.POS + context_extension].upper() # potentially could instead skip lower case
+  if fragment[context_extension] != variant.REF:
     logging.warning('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', no_chr(variant.CHROM), variant.POS, variant.REF, fragment[0], fragment[1], fragment[2])
     return
 
@@ -253,7 +257,7 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
         counts[doublet] += 1
         logging.debug('doublet found at %s:%s: %s', no_chr(variant.CHROM), variant.POS, doublet)
 
-def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, doublets=False, indels=False, just_indels=False):
+def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, doublets=False, indels=False, just_indels=False, mer=3):
   logging.info('processing %s with %i filters...', vcf, len(variant_filters))
 
   if chroms is None:
@@ -278,7 +282,7 @@ def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, do
     # keep track of lots of counts
     for idx, variant_filter in enumerate(variant_filters):
       if variant_filter(vcf_in, variant):
-        update_counts(all_counts[idx], variant, last_variant, chroms, doublets, indels, just_indels)
+        update_counts(all_counts[idx], variant, last_variant, chroms, doublets, indels, just_indels, mer=mer)
 
     last_variant = variant
 
@@ -296,7 +300,7 @@ def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, do
     if out is not None:
       out.write('{}\t{}\t{}\n'.format('Variation', 'Count', 'Probability'))
       for k in sorted(counts):
-        out.write('{}\t{}\t{:.3f}\n'.format(k, counts[k], counts[k] / total_count))
+        out.write('{}\t{}\t{:.6f}\n'.format(k, counts[k], counts[k] / total_count))
 
       # add zero results for SBS
       if not just_indels:
@@ -308,18 +312,18 @@ def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, do
               for suffix in ('A', 'C', 'G', 'T'):
                 count = '{}{}{}>{}'.format(prefix, ref, suffix, alt)
                 if count not in counts:
-                  out.write('{}\t{}\t{:.3f}\n'.format(count, 0, 0))
+                  out.write('{}\t{}\t{:.6f}\n'.format(count, 0, 0))
 
       # add zero results for doublets
       if doublets:
         for doublet in DOUBLETS:
           if doublet not in counts:
-            out.write('{}\t{}\t{:.3f}\n'.format(doublet, 0, 0))
+            out.write('{}\t{}\t{:.6f}\n'.format(doublet, 0, 0))
 
       if indels:
         for indel in INDELS:
           if indel not in counts:
-            out.write('{}\t{}\t{:.3f}\n'.format(indel, 0, 0))
+            out.write('{}\t{}\t{:.6f}\n'.format(indel, 0, 0))
 
   return {'chroms': chroms, 'all_counts': all_counts, 'all_totals': all_total_counts}
 
@@ -355,7 +359,7 @@ def read_transcripts(transcripts):
   logging.info('reading %s: done with %i exon bases and %i tx bases', transcripts, bases, txbases)
   return txtree, tree
 
-def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublets=False, indels=False, just_indels=False, transcripts_fn=None):
+def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublets=False, indels=False, just_indels=False, transcripts_fn=None, mer=3):
   logging.info('processing vcf...')
 
   if chroms is None:
@@ -395,7 +399,7 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
       filtered += 1
       continue
 
-    update_counts(counts, variant, last_variant, chroms, doublets, indels, just_indels, transcripts, exons, tx_counts)
+    update_counts(counts, variant, last_variant, chroms, doublets, indels, just_indels, transcripts, exons, tx_counts, mer)
 
     last_variant = variant
 
@@ -415,33 +419,33 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
       codingExon = tx_counts['{}|{}'.format(k, '+')]
       nonCodingExon = tx_counts['{}|{}'.format(k, '-')]
 
-      out.write('{}\t{}\t{:.3f}\t{}\t{}\t{:.3f}\t{}\t{}\t{:.3f}\n'.format(k, counts[k], counts[k] / total_count, 
+      out.write('{}\t{}\t{:.6f}\t{}\t{}\t{:.6f}\t{}\t{}\t{:.6f}\n'.format(k, counts[k], counts[k] / total_count, 
         codingTx, nonCodingTx, scipy.stats.binom_test([codingTx, nonCodingTx]),
         codingExon, nonCodingExon, scipy.stats.binom_test([codingExon, nonCodingExon])))
 
     # add zero results for SBS
+    context_extension = int((mer - 1) / 2) # 3 -> 1, 5 -> 2, etc
     if not just_indels:
       for ref in ('C', 'T'):
         for alt in ('A', 'C', 'G', 'T'):
           if ref == alt:
             continue
-          for prefix in ('A', 'C', 'G', 'T'):
-            for suffix in ('A', 'C', 'G', 'T'):
-              count = '{}{}{}>{}'.format(prefix, ref, suffix, alt)
+          for prefix in itertools.product('ACGT', repeat=context_extension):
+            for suffix in itertools.product('ACGT', repeat=context_extension):
+              count = '{}{}{}>{}'.format(''.join(prefix), ref, ''.join(suffix), alt)
               if count not in counts:
-                out.write('{}\t{}\t{:.3f}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(count, 0, 0, 0, 0, 1, 0, 0, 1))
+                out.write('{}\t{}\t{:.6f}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(count, 0, 0, 0, 0, 1, 0, 0, 1))
 
     # add zero results for doublets
     if doublets:
       for doublet in DOUBLETS:
         if doublet not in counts:
-          out.write('{}\t{}\t{:.3f}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(doublet, 0, 0, 0, 0, 1, 0, 0, 1))
+          out.write('{}\t{}\t{:.6f}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(doublet, 0, 0, 0, 0, 1, 0, 0, 1))
 
     if indels:
       for indel in INDELS:
         if indel not in counts:
-          out.write('{}\t{}\t{:.3f}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(indel, 0, 0, 0, 0, 1, 0, 0, 1))
-
+          out.write('{}\t{}\t{:.6f}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(indel, 0, 0, 0, 0, 1, 0, 0, 1))
 
   return {'chroms': chroms, 'counts': counts, 'total': total_count}
 
@@ -502,6 +506,7 @@ if __name__ == '__main__':
   parser.add_argument('--indels', action='store_true', help='count indels')
   parser.add_argument('--just_indels', action='store_true', help='count only indels')
   parser.add_argument('--transcripts', required=False, help='refseq transcript file')
+  parser.add_argument('--mer', required=False, default=3, type=int, help='context length to consider for sbs')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -522,7 +527,7 @@ if __name__ == '__main__':
       out = open(args.out[idx], 'w')
       out_fn = args.out[idx]
     logging.info('processing %i of %i: %s -> %s...', idx, len(args.vcf), v, out_fn)
-    result = count(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=out, chroms=chroms, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, transcripts_fn=args.transcripts)
+    result = count(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=out, chroms=chroms, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, transcripts_fn=args.transcripts, mer=args.mer)
     chroms = result['chroms']
     logging.debug('chroms is %s', chroms.keys())
     logging.info('processing %i of %i: %s -> %s: done', idx, len(args.vcf), v, out_fn)

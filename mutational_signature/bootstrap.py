@@ -17,7 +17,7 @@ import plotme.box
 
 import mutational_signature.decompose
 
-def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possible=True, out=sys.stdout, subsample=1.0, subsample_count=None, plot=None, plot_title=None, error_probability=0.01, signature_sum=None):
+def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possible=True, out=sys.stdout, subsample=1.0, subsample_count=None, plot=None, plot_title=None, error_probability=0.01, signature_sum=None, oversample=1.0):
   confidence=[float(c) for c in confidence]
   logging.info('reading counts from stdin...')
   variants = 0
@@ -138,12 +138,13 @@ if __name__ == '__main__':
   parser.add_argument('--signatures', required=True, help='signatures to decompose to')
   parser.add_argument('--count', required=False, default=10, type=int, help='how many times to run the bootstrap')
   parser.add_argument('--confidence', required=False, nargs='+', default=[0.05, 0.5, 0.95], help='what confidence intervals to include in output')
-  parser.add_argument('--subsample', required=False, type=float, default=1.0, help='reduce context count by this percentage')
+  parser.add_argument('--subsample', required=False, type=float, default=1.0, help='percentage probability of selecting a variant')
+  parser.add_argument('--oversample', required=False, type=float, default=1.0, help='percentage to increase sampling by')
   parser.add_argument('--subsample_count', required=False, type=int, help='reduce context to this number of variants')
   parser.add_argument('--plot', required=False, help='filename for boxplot')
   parser.add_argument('--plot_title', required=False, help='title for boxplot')
   parser.add_argument('--all_contexts_possible', action='store_true', help='set empty contexts to have a count of 1')
-  parser.add_argument('--error_probability', required=False, default=0.01, help='probability of a draw being a random context')
+  parser.add_argument('--error_probability', required=False, default=0.01, type=float, help='probability of a draw being a random context')
   parser.add_argument('--signature_sum', required=False, nargs='+', help='Show the variation in a sum of signatures')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
@@ -152,5 +153,5 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  main(args.signatures, args.count, args.confidence, subsample=args.subsample, subsample_count=args.subsample_count, all_contexts_possible=args.all_contexts_possible, plot=args.plot, plot_title=args.plot_title, error_probability=args.error_probability, signature_sum=args.signature_sum)
+  main(args.signatures, args.count, args.confidence, subsample=args.subsample, subsample_count=args.subsample_count, all_contexts_possible=args.all_contexts_possible, plot=args.plot, plot_title=args.plot_title, error_probability=args.error_probability, signature_sum=args.signature_sum, oversample=args.oversample)
 

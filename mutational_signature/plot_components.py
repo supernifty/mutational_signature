@@ -24,7 +24,6 @@ from pylab import rcParams
 
 HEIGHT_MULTIPLIER = 1.8
 WIDTH_MULTIPLIER = 0.6
-DPI=300
 
 def formatter_container(vals):
   def formatter(val, loc):
@@ -32,15 +31,19 @@ def formatter_container(vals):
 
   return formatter
 
-def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_fontsize=None, legend_cols=1, denormalize=False, transparent=False, custom_colors=None, fontfamily=None, indicators=None, indicator_cmaps=None, indicator_cat=None, auto_max=False):
+def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_fontsize=None, legend_cols=1, denormalize=False, transparent=False, custom_colors=None, fontfamily=None, indicators=None, indicator_cmaps=None, indicator_cat=None, auto_max=False, xaxis_fontsize=None, yaxis_fontsize=None, dpi=300, linewidth=None):
   logging.info('reading from stdin with threshold %f and order %s...', threshold, order)
-  rcParams.update({'font.size': fontsize})
 
-  if legend_fontsize is not None:
-    rcParams.update({'legend.fontsize': legend_fontsize, 'figure.titlesize': legend_fontsize, 'axes.titlesize': legend_fontsize})
-    
+  import matplotlib # again!
   if fontfamily is not None:
-    rcParams.update({'font.family': fontfamily})
+    matplotlib.rcParams.update({'font.family': fontfamily})
+
+  if linewidth is not None:
+    matplotlib.rcParams.update({'axes.linewidth': linewidth})
+    matplotlib.rcParams.update({'patch.linewidth': linewidth})
+    matplotlib.rcParams.update({'xtick.major.width': linewidth})
+    matplotlib.rcParams.update({'ytick.major.width': linewidth})
+
 
   header = next(sigs)
   logging.info('header is %s', header)
@@ -123,6 +126,10 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     import matplotlib.style
     matplotlib.style.use('seaborn') 
 
+    if linewidth is not None:
+      matplotlib.rcParams.update({'axes.linewidth': linewidth})
+
+
     figure_height = figure_height or 12
     if figure_width is None:
       fig = plt.figure(figsize=(WIDTH_MULTIPLIER * len(samples), figure_height))
@@ -130,6 +137,19 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       figure_width = figure_width or 24
       fig = plt.figure(figsize=(figure_width, figure_height))
     ax = fig.add_subplot(111)
+
+    if xaxis_fontsize is not None:
+      ax.tick_params(axis='x', labelsize=xaxis_fontsize)
+    if yaxis_fontsize is not None:
+      ax.tick_params(axis='y', labelsize=yaxis_fontsize)
+
+    ax.xaxis.label.set_size(fontsize)
+    ax.yaxis.label.set_size(fontsize)
+    ax.title.set_fontsize(fontsize)
+
+    if legend_fontsize is not None:
+      plt.rc('legend',fontsize=legend_fontsize)
+
     patch_handles = []
 
     sample_id = np.arange(len(samples))
@@ -167,7 +187,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     if not denormalize and not auto_max:
       ax.set_ylim(0, 100)
 
-    ax.set_title(title or 'Somatic mutational signatures per sample')
+    ax.set_title(title or 'Somatic mutational signatures per sample', fontsize=fontsize)
   
     # place legend at right based on https://stackoverflow.com/questions/10101700/moving-matplotlib-legend-outside-of-the-axis-makes-it-cutoff-by-the-figure-box/10154763#10154763
     handles, labels = ax.get_legend_handles_labels()
@@ -178,7 +198,8 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01, 1.0), borderaxespad=0, ncol=legend_cols)
     lgd.get_frame().set_edgecolor('#000000')
     #fig.savefig(target, transparent=True, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
-    fig.savefig(target, transparent=transparent, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    logging.info('writing to %s with dpi %i', target, dpi)
+    fig.savefig(target, transparent=transparent, dpi=dpi, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
   else: # horizontal
     logging.debug('going horizontal...')
@@ -198,6 +219,18 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
         axis[-1].axes.get_yaxis().set_visible(False)
     else:
       ax = fig.add_subplot(111)
+
+    if xaxis_fontsize is not None:
+      ax.tick_params(axis='x', labelsize=xaxis_fontsize)
+    if yaxis_fontsize is not None:
+      ax.tick_params(axis='y', labelsize=yaxis_fontsize)
+
+    ax.xaxis.label.set_size(fontsize)
+    ax.yaxis.label.set_size(fontsize)
+    ax.title.set_fontsize(fontsize)
+
+    if legend_fontsize is not None:
+      plt.rc('legend',fontsize=legend_fontsize)
 
     data = list(reversed(data))
     samples = list(reversed(samples))
@@ -258,7 +291,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     ax.set_yticklabels(samples)
     ax.set_xlabel(xlabel or 'Contribution of signatures to somatic mutations (%)')
     ax.set_ylabel(ylabel or 'Sample')
-    ax.set_title(title or 'Somatic mutational signatures per sample')
+    ax.set_title(title or 'Somatic mutational signatures per sample', fontsize=fontsize)
   
     # place legend at right based on https://stackoverflow.com/questions/10101700/moving-matplotlib-legend-outside-of-the-axis-makes-it-cutoff-by-the-figure-box/10154763#10154763
     handles, labels = ax.get_legend_handles_labels()
@@ -288,7 +321,8 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0)
     lgd.get_frame().set_edgecolor('#000000')
  
-    fig.savefig(target, transparent=transparent, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    logging.info('writing to %s with dpi %i', target, dpi)
+    fig.savefig(target, transparent=transparent, dpi=dpi, bbox_extra_artists=(lgd,), bbox_inches='tight')
   plt.close('all')
 
 if __name__ == '__main__':
@@ -309,10 +343,14 @@ if __name__ == '__main__':
   parser.add_argument('--legend_width', required=False, type=float, help='legend width of vertical plot')
   parser.add_argument('--legend_y_offset', required=False, type=float, help='legend y offset')
   parser.add_argument('--legend_cols', required=False, type=int, default=1, help='legend cols')
+  parser.add_argument('--linewidth', required=False, type=float, help='linewidth')
   parser.add_argument('--title', required=False, help='title')
   parser.add_argument('--fontsize', required=False, default=12, type=int, help='plot font size')
   parser.add_argument('--fontfamily', required=False, help='plot font family')
+  parser.add_argument('--dpi', required=False, default=300, type=int, help='plot dpi')
   parser.add_argument('--legend_fontsize', required=False, type=int, help='legend font size')
+  parser.add_argument('--xaxis_fontsize', required=False, type=int, help='xaxis font size')
+  parser.add_argument('--yaxis_fontsize', required=False, type=int, help='yaxis font size')
   parser.add_argument('--vertical', action='store_true', help='plot vertically')
   parser.add_argument('--denormalize', action='store_true', help='do not constrain to 100 percent')
   parser.add_argument('--auto_max', action='store_true', help='do not set max to 100 percent')
@@ -327,4 +365,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_fontsize, args.legend_cols, args.denormalize, args.transparent, args.colors, args.fontfamily, args.indicators, args.indicator_cmaps, args.indicator_cat, args.auto_max)
+  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_fontsize, args.legend_cols, args.denormalize, args.transparent, args.colors, args.fontfamily, args.indicators, args.indicator_cmaps, args.indicator_cat, args.auto_max, args.xaxis_fontsize, args.yaxis_fontsize, args.dpi, args.linewidth)

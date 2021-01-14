@@ -19,6 +19,47 @@ import logging
 import sys
 
 import cyvcf2
+import intervaltree
+
+EXCLUDE_UTR=True
+
+def no_chr(chrom):
+  if chrom == 'MT':
+    return 'M'
+  # deals with chrUn_gl000220.1
+  return chrom.split('.')[0].split('_', maxsplit=1)[-1].replace('chr', '').upper()
+
+def read_transcripts(transcripts):
+  logging.info('reading %s...', transcripts)
+  tree = {}
+  txtree = {}
+  bases = 0
+  txbases = 0
+  #bin    name    chrom   strand  txStart txEnd   cdsStart        cdsEnd  exonCount       exonStarts      exonEnds        score   name2   cdsStartStat    cdsEndStat      exonFrames
+  for rowline, row in enumerate(csv.DictReader(gzip.open(transcripts, 'rt'), delimiter='\t')):
+    chrom = no_chr(row['chrom'])
+    if chrom not in tree:
+      logging.debug('added %s to transcripts. %i exon bases and %i transcript bases so far', chrom, bases, txbases)
+      tree[chrom] = intervaltree.IntervalTree()
+      txtree[chrom] = intervaltree.IntervalTree()
+    txtree[chrom][int(row['txStart']):int(row['txEnd'])] = row['strand']
+    txbases += int(row['txEnd']) - int(row['txStart'])
+    for start, end in zip(row['exonStarts'].split(','), row['exonEnds'].split(',')):
+      if start == '' or end == '':
+        continue
+      if EXCLUDE_UTR:
+        start = max(int(start), int(row['cdsStart']))
+        end = min(int(end), int(row['cdsEnd']))
+        if start < end:
+          tree[chrom][start:end] = row['strand'] # + or -
+          bases += end - start
+      else:
+        tree[chrom][start:end] = row['strand']
+        bases += end - start
+    if rowline % 1000 == 0:
+      logging.debug('processed %i lines...', rowline)
+  logging.info('reading %s: done with %i exon bases and %i tx bases', transcripts, bases, txbases)
+  return txtree, tree
 
 def update_chroms(required, chroms, genome, next_chrom):
   '''
@@ -29,7 +70,7 @@ def update_chroms(required, chroms, genome, next_chrom):
     line = line.strip('\n')
     if line.startswith('>'):
       if next_chrom is None: # first line of file
-        next_chrom = line[1:].split(' ')[0].replace('chr', '')
+        next_chrom = no_chr(line[1:].split(' ')[0].replace('chr', ''))
         logging.debug('reading chrom %s from genome...', next_chrom)
       else:
         # remove previous chromosomes
@@ -37,7 +78,7 @@ def update_chroms(required, chroms, genome, next_chrom):
         seq = []
         logging.info('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
         if required == next_chrom:
-          next_chrom = line[1:].split(' ')[0].replace('chr', '')
+          next_chrom = no_chr(line[1:].split(' ')[0].replace('chr', ''))
           logging.debug('required chrom %s found', next_chrom)
           return next_chrom
         else:
@@ -72,16 +113,38 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
 
   last_variant = None
   rules = [rule.split(',') for rule in rules] # [[T>*, -3=A], [A>*, +3=T]]
-  counts = [[0, 0] for _ in rules]
+  counts = [[0, 0] for _ in rules] # any mutation, specific mutation
+  tx_counts = [[0, 0, 0, 0] for _ in rules] # any mutation pos, specific mutation pos, any mutation neg, specific mutation neg
+  tx_strand = None
   for line, variant in enumerate(vcf_in):
-    if variant.CHROM not in chroms_seen:
-      logging.debug('chrom %s seen in vcf', variant.CHROM)
-      next_chrom = update_chroms(variant.CHROM, chroms, genome_fh, next_chrom)
-      chroms_seen.add(variant.CHROM)
+    chrom = no_chr(variant.CHROM)
+    if chrom not in chroms_seen:
+      logging.debug('chrom %s seen in vcf', chrom)
+      next_chrom = update_chroms(chrom, chroms, genome_fh, next_chrom)
+      chroms_seen.add(chrom)
 
     if False:
       filtered += 1
       continue
+
+    # check transcript
+    if transcripts is not None and chrom in transcripts:
+      intersections = transcripts[chrom][variant.POS]
+      if len(intersections) == 0:
+        logging.debug('%s:%i is not coding', chrom, variant.POS)
+        tx_strand = None
+      elif len(intersections) > 1:
+        logging.debug('%i multiple intersections at %s:%i', len(intersections), chrom, variant.POS) # can't decide
+        tx_strand = list(intersections)[0][2]
+        logging.debug('%i multiple intersections at %s:%i: first is %s', len(intersections), chrom, variant.POS, tx_strand) # can't decide
+      else:
+        tx_strand = list(intersections)[0][2]
+      if tx_strand == '+':
+        tx_strand_idx = 0
+      elif tx_strand == '-':
+        tx_strand_idx = 2
+      else:
+        logging.warn('surprising tx strand: %s', tx_strand)
 
     # assess each rule
     for idx, rule in enumerate(rules):
@@ -92,7 +155,7 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
       if not variant_ok and len(variant.REF) != len(variant.ALT[0]):
         # see if it passes as an indel
         indel_size = len(variant.ALT[0]) - len(variant.REF)
-        logging.debug('variant at %s:%i %s>%s: indel_size is %i. checking against %s>%s', variant.CHROM, variant.POS, variant.REF, variant.ALT[0], indel_size, ref, alt)
+        logging.debug('variant at %s:%i %s>%s: indel_size is %i. checking against %s>%s', chrom, variant.POS, variant.REF, variant.ALT[0], indel_size, ref, alt)
         if ref == variant.REF and alt == variant.ALT[0]: # T> (TCGA mafs)
           variant_ok = True
         elif indel_size < 0 and variant.REF[indel_size:] == ref and alt == '': # TA>T => T> # compare the deletion to ref
@@ -104,12 +167,15 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
         else:
           variant_ok = False
       if variant_ok:
-        logging.debug('variant at %s:%i %s>%s will be evaluated against %s', variant.CHROM, variant.POS, variant.REF, variant.ALT[0], rule)
+        logging.debug('variant at %s:%i %s>%s will be evaluated against %s', chrom, variant.POS, variant.REF, variant.ALT[0], rule)
         passes = False
         counts[idx][0] += 1
+        if tx_strand is not None:
+          tx_counts[idx][0 + tx_strand_idx] += 1
+
         # does it pass the context requirement(s)
         current_pos = 0 # iterate along the repeated region
-        while chroms[variant.CHROM][variant.POS - 1 + rel_pos + current_pos] == ref[0]: # should continue to be true
+        while chroms[chrom][variant.POS - 1 + rel_pos + current_pos] == ref[0]: # should continue to be true
           passes = True # ok until something goes wrong
           logging.debug('trying rule %s at relative position %i', rule, current_pos)
           for context in rule[1:]:
@@ -117,40 +183,40 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
             if '=' in context:
               pos, expected_base = context.split('=')
               pos = variant.POS + rel_pos + int(pos) + current_pos
-              if pos < 1 or pos > len(chroms[variant.CHROM]):
-                logging.warn('unable to assess variant at %s:%i', variant.CHROM, variant.POS)
+              if pos < 1 or pos > len(chroms[chrom]):
+                logging.warn('unable to assess variant at %s:%i', chrom, variant.POS)
                 passes = False
                 break
-              genome_base = chroms[variant.CHROM][pos - 1]
-              logging.debug('genome base is %s at %s:%i, required base is %s', genome_base, variant.CHROM, pos, expected_base)
+              genome_base = chroms[chrom][pos - 1]
+              logging.debug('genome base is %s at %s:%i, required base is %s', genome_base, chrom, pos, expected_base)
               if genome_base != expected_base:
-                logging.debug('genome base is %s at %s:%i, required base is %s: failed', genome_base, variant.CHROM, pos, expected_base)
+                logging.debug('genome base is %s at %s:%i, required base is %s: failed', genome_base, chrom, pos, expected_base)
                 passes = False
                 break
             elif '~' in context:
               pos, expected_bases = context.split('~')
               pos = variant.POS + rel_pos + int(pos) + current_pos
-              if pos < 1 or pos > len(chroms[variant.CHROM]):
-                logging.warn('unable to assess variant at %s:%i', variant.CHROM, variant.POS)
+              if pos < 1 or pos > len(chroms[chrom]):
+                logging.warn('unable to assess variant at %s:%i', chrom, variant.POS)
                 passes = False
                 break
-              genome_base = chroms[variant.CHROM][pos - 1]
-              logging.debug('genome base is %s at %s:%i, required base is any of %s', genome_base, variant.CHROM, pos, expected_bases)
+              genome_base = chroms[chrom][pos - 1]
+              logging.debug('genome base is %s at %s:%i, required base is any of %s', genome_base, chrom, pos, expected_bases)
               if genome_base not in expected_bases:
-                logging.debug('genome base is %s at %s:%i, required base is any of %s: failed', genome_base, variant.CHROM, pos, expected_bases)
+                logging.debug('genome base is %s at %s:%i, required base is any of %s: failed', genome_base, chrom, pos, expected_bases)
                 passes = False
                 break
             elif '!' in context:
               pos, unexpected_base = context.split('!')
               pos = variant.POS + rel_pos + int(pos) + current_pos
-              if pos < 1 or pos > len(chroms[variant.CHROM]):
-                logging.warn('unable to assess variant at %s:%i', variant.CHROM, variant.POS)
+              if pos < 1 or pos > len(chroms[chrom]):
+                logging.warn('unable to assess variant at %s:%i', chrom, variant.POS)
                 passes = False
                 break
-              genome_base = chroms[variant.CHROM][pos - 1]
-              logging.debug('genome base is %s at %s:%i, base cannot be %s', genome_base, variant.CHROM, pos, unexpected_base)
+              genome_base = chroms[chrom][pos - 1]
+              logging.debug('genome base is %s at %s:%i, base cannot be %s', genome_base, chrom, pos, unexpected_base)
               if genome_base == unexpected_base:
-                logging.debug('genome base is %s at %s:%i, base cannot be %s: failed', genome_base, variant.CHROM, pos, unexpected_base)
+                logging.debug('genome base is %s at %s:%i, base cannot be %s: failed', genome_base, chrom, pos, unexpected_base)
                 passes = False
                 break
                 
@@ -164,8 +230,10 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
           current_pos += 1
 
         if passes: # no rule failed
-          logging.debug('variant at %s:%i %s>%s passed rule %s', variant.CHROM, variant.POS, variant.REF, variant.ALT[0], rule)
+          logging.debug('variant at %s:%i %s>%s passed rule %s', chrom, variant.POS, variant.REF, variant.ALT[0], rule)
           counts[idx][1] += 1
+          if tx_strand is not None:
+            tx_counts[idx][1 + tx_strand_idx] += 1
 
     if line % 100 == 0:
       logging.info('processed %i variants with interim results %s', line, counts)
@@ -173,10 +241,22 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
   # now write out results
   out.write('Rule\tMutationCount\tPassCount\tPctPass\n')
   for rule, count in zip(rules, counts):
-    if count[0] > 0:
+    if count[0] > 0: 
       out.write('{}\t{}\t{}\t{:.3f}\n'.format(','.join(rule), count[0], count[1], count[1] / count[0])) 
-    else:
+    else: # deal with zero denominator
       out.write('{}\t{}\t{}\t{}\n'.format(','.join(rule), count[0], count[1], 0))
+
+  if transcripts is not None:
+    for rule, count in zip(rules, tx_counts):
+      # count contains +mut +pass -mut -pass
+      if count[0] > 0: 
+        out.write('{}_tx\t{}\t{}\t{:.3f}\n'.format(','.join(rule), count[0], count[1], count[1] / count[0])) 
+      else: # deal with zero denominator
+        out.write('{}_tx\t{}\t{}\t{}\n'.format(','.join(rule), count[0], count[1], 0))
+      if count[2] > 0: 
+        out.write('{}_notx\t{}\t{}\t{:.3f}\n'.format(','.join(rule), count[2], count[3], count[3] / count[2])) 
+      else: # deal with zero denominator
+        out.write('{}_notx\t{}\t{}\t{}\n'.format(','.join(rule), count[2], count[3], 0))
 
   # and write total
   counts_0 = sum([count[0] for count in counts])
