@@ -31,7 +31,7 @@ python count.py --genome genome.fa --vcf sample.vcf > sample.count
 
 Make a signature plot:
 ```
-python plot_components.py sample.png < sample.count
+python plot_counts.py --target sample.png < sample.count
 ```
 
 Find the most likely combination of signatures:
