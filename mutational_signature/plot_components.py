@@ -24,6 +24,7 @@ from pylab import rcParams
 
 HEIGHT_MULTIPLIER = 1.8
 WIDTH_MULTIPLIER = 0.6
+DPI=300
 
 def formatter_container(vals):
   def formatter(val, loc):
@@ -43,7 +44,6 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     matplotlib.rcParams.update({'patch.linewidth': linewidth})
     matplotlib.rcParams.update({'xtick.major.width': linewidth})
     matplotlib.rcParams.update({'ytick.major.width': linewidth})
-
 
   header = next(sigs)
   logging.info('header is %s', header)
@@ -129,7 +129,6 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     if linewidth is not None:
       matplotlib.rcParams.update({'axes.linewidth': linewidth})
 
-
     figure_height = figure_height or 12
     if figure_width is None:
       fig = plt.figure(figsize=(WIDTH_MULTIPLIER * len(samples), figure_height))
@@ -199,6 +198,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     lgd.get_frame().set_edgecolor('#000000')
     #fig.savefig(target, transparent=True, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
     logging.info('writing to %s with dpi %i', target, dpi)
+    ax.margins(x=0)
     fig.savefig(target, transparent=transparent, dpi=dpi, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
   else: # horizontal
@@ -322,6 +322,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     lgd.get_frame().set_edgecolor('#000000')
  
     logging.info('writing to %s with dpi %i', target, dpi)
+    ax.margins(x=0)
     fig.savefig(target, transparent=transparent, dpi=dpi, bbox_extra_artists=(lgd,), bbox_inches='tight')
   plt.close('all')
 
