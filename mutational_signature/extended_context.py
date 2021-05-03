@@ -116,6 +116,7 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
   counts = [[0, 0] for _ in rules] # any mutation, specific mutation
   tx_counts = [[0, 0, 0, 0] for _ in rules] # any mutation pos, specific mutation pos, any mutation neg, specific mutation neg
   tx_strand = None
+  considered = 0
   for line, variant in enumerate(vcf_in):
     chrom = no_chr(variant.CHROM)
     if chrom not in chroms_seen:
@@ -126,6 +127,8 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
     if False:
       filtered += 1
       continue
+
+    considered += 1
 
     # check transcript
     if transcripts is not None and chrom in transcripts:
@@ -265,6 +268,9 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
     out.write('{}\t{}\t{}\t{:.3f}\n'.format('TOTAL', counts_0, counts_1, counts_1 / counts_0)) 
   else:
     out.write('{}\t{}\t{}\t{}\n'.format('TOTAL', counts_0, counts_1, 0)) 
+
+  # all mutations
+  out.write('{}\t{}\t{}\t{}\n'.format('Considered', considered, 0, 0)) 
 
 def get_value(header, col, row):
   return row[header.index(col)]

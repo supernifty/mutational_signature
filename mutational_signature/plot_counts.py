@@ -28,11 +28,11 @@ def plot(counts, target, style='sbs', name=None):
     if first:
       first = False
       continue
-    if line.count('\t') > 2:
+    if line.count('\t') > 2: # 4+ fields
       v, count, probability, _ = line.strip('\n').split('\t', 3)
-    elif line.count('\t') > 1:
+    elif line.count('\t') > 1: # 3 fields
       v, count, probability = line.strip('\n').split('\t')
-    else:
+    else: # 2 fields
       v, probability = line.strip('\n').split('\t')
     if style == 'sbs':
       if len(v) == 5 and v[3] == '>':

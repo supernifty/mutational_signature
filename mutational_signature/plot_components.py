@@ -208,7 +208,8 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       fig = plt.figure(figsize=(figure_width, HEIGHT_MULTIPLIER * len(samples)))
     else:
       figure_height = figure_height or 12
-      fig = plt.figure(figsize=(figure_width, figure_width))
+      logging.info('figure size is %i, %i', figure_width, figure_height)
+      fig = plt.figure(figsize=(figure_width, figure_height))
 
     if len(indicators) > 0:
       grid = plt.GridSpec(1, 40, hspace=0, wspace=0.2)
@@ -318,7 +319,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       #cb = plt.colorbar(axi, cax=cbaxes)  
       lgd = axis[-len(indicators)].legend(handles, labels, loc='upper left', bbox_to_anchor=(1.1,1.0), borderaxespad=0.1)
     else:
-      lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0)
+      lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0, ncol=legend_cols)
     lgd.get_frame().set_edgecolor('#000000')
  
     logging.info('writing to %s with dpi %i', target, dpi)

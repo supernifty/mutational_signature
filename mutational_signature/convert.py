@@ -8,9 +8,106 @@ import collections
 import logging
 import sys
 
-def main(conversion):
+INDEL_MAP = {
+  '1:Del:C:0': 'DEL_C_1_0',
+  '1:Del:C:1': 'DEL_C_1_1',
+  '1:Del:C:2': 'DEL_C_1_2',
+  '1:Del:C:3': 'DEL_C_1_3',
+  '1:Del:C:4': 'DEL_C_1_4',
+  '1:Del:C:5': 'DEL_C_1_5+',
+  '1:Del:T:0': 'DEL_T_1_0',
+  '1:Del:T:1': 'DEL_T_1_1',
+  '1:Del:T:2': 'DEL_T_1_2',
+  '1:Del:T:3': 'DEL_T_1_3',
+  '1:Del:T:4': 'DEL_T_1_4',
+  '1:Del:T:5': 'DEL_T_1_5+',
+  '1:Ins:C:0': 'INS_C_1_0',
+  '1:Ins:C:1': 'INS_C_1_1',
+  '1:Ins:C:2': 'INS_C_1_2',
+  '1:Ins:C:3': 'INS_C_1_3',
+  '1:Ins:C:4': 'INS_C_1_4',
+  '1:Ins:C:5': 'INS_C_1_5+',
+  '1:Ins:T:0': 'INS_T_1_0',
+  '1:Ins:T:1': 'INS_T_1_1',
+  '1:Ins:T:2': 'INS_T_1_2',
+  '1:Ins:T:3': 'INS_T_1_3',
+  '1:Ins:T:4': 'INS_T_1_4',
+  '1:Ins:T:5': 'INS_T_1_5+',
+  '2:Del:R:0': 'DEL_repeats_2_0',
+  '2:Del:R:1': 'DEL_repeats_2_1',
+  '2:Del:R:2': 'DEL_repeats_2_2',
+  '2:Del:R:3': 'DEL_repeats_2_3',
+  '2:Del:R:4': 'DEL_repeats_2_4',
+  '2:Del:R:5': 'DEL_repeats_2_5+',
+  '3:Del:R:0': 'DEL_repeats_3_0',
+  '3:Del:R:1': 'DEL_repeats_3_1',
+  '3:Del:R:2': 'DEL_repeats_3_2',
+  '3:Del:R:3': 'DEL_repeats_3_3',
+  '3:Del:R:4': 'DEL_repeats_3_4',
+  '3:Del:R:5': 'DEL_repeats_3_5+',
+  '4:Del:R:0': 'DEL_repeats_4_0',
+  '4:Del:R:1': 'DEL_repeats_4_1',
+  '4:Del:R:2': 'DEL_repeats_4_2',
+  '4:Del:R:3': 'DEL_repeats_4_3',
+  '4:Del:R:4': 'DEL_repeats_4_4',
+  '4:Del:R:5': 'DEL_repeats_4_5+',
+  '5:Del:R:0': 'DEL_repeats_5+_0',
+  '5:Del:R:1': 'DEL_repeats_5+_1',
+  '5:Del:R:2': 'DEL_repeats_5+_2',
+  '5:Del:R:3': 'DEL_repeats_5+_3',
+  '5:Del:R:4': 'DEL_repeats_5+_4',
+  '5:Del:R:5': 'DEL_repeats_5+_5+',
+  '2:Ins:R:0': 'INS_repeats_2_0',
+  '2:Ins:R:1': 'INS_repeats_2_1',
+  '2:Ins:R:2': 'INS_repeats_2_2',
+  '2:Ins:R:3': 'INS_repeats_2_3',
+  '2:Ins:R:4': 'INS_repeats_2_4',
+  '2:Ins:R:5': 'INS_repeats_2_5+',
+  '3:Ins:R:0': 'INS_repeats_3_0',
+  '3:Ins:R:1': 'INS_repeats_3_1',
+  '3:Ins:R:2': 'INS_repeats_3_2',
+  '3:Ins:R:3': 'INS_repeats_3_3',
+  '3:Ins:R:4': 'INS_repeats_3_4',
+  '3:Ins:R:5': 'INS_repeats_3_5+',
+  '4:Ins:R:0': 'INS_repeats_4_0',
+  '4:Ins:R:1': 'INS_repeats_4_1',
+  '4:Ins:R:2': 'INS_repeats_4_2',
+  '4:Ins:R:3': 'INS_repeats_4_3',
+  '4:Ins:R:4': 'INS_repeats_4_4',
+  '4:Ins:R:5': 'INS_repeats_4_5+',
+  '5:Ins:R:0': 'INS_repeats_5+_0',
+  '5:Ins:R:1': 'INS_repeats_5+_1',
+  '5:Ins:R:2': 'INS_repeats_5+_2',
+  '5:Ins:R:3': 'INS_repeats_5+_3',
+  '5:Ins:R:4': 'INS_repeats_5+_4',
+  '5:Ins:R:5': 'INS_repeats_5+_5+',
+  '2:Del:M:1': 'DEL_MH_2_1',
+  '3:Del:M:1': 'DEL_MH_3_1',
+  '3:Del:M:2': 'DEL_MH_3_2',
+  '4:Del:M:1': 'DEL_MH_4_1',
+  '4:Del:M:2': 'DEL_MH_4_2',
+  '4:Del:M:3': 'DEL_MH_4_3',
+  '5:Del:M:1': 'DEL_MH_5+_1',
+  '5:Del:M:2': 'DEL_MH_5+_2',
+  '5:Del:M:3': 'DEL_MH_5+_3',
+  '5:Del:M:4': 'DEL_MH_5+_4',
+  '5:Del:M:5': 'DEL_MH_5+_5+',
+  '2:Ins:M:1': 'INS_MH_2_1',
+  '3:Ins:M:1': 'INS_MH_3_1',
+  '3:Ins:M:2': 'INS_MH_3_2',
+  '4:Ins:M:1': 'INS_MH_4_1',
+  '4:Ins:M:2': 'INS_MH_4_2',
+  '4:Ins:M:3': 'INS_MH_4_3',
+  '5:Ins:M:1': 'INS_MH_5+_1',
+  '5:Ins:M:2': 'INS_MH_5+_2',
+  '5:Ins:M:3': 'INS_MH_5+_3',
+  '5:Ins:M:4': 'INS_MH_5+_4',
+  '5:Ins:M:5': 'INS_MH_5+_5+'
+}
+
+def main(conversion, delimiter=','):
   logging.info('reading from stdin...')
-  if conversion is None or conversion == 'sbs':
+  if conversion is None or conversion in ('sbs', 'sbs32'):
     # v4 to v3
     # source
     #Type,SubType,SBS1,SBS2,SBS3,SBS4,SBS5,SBS6,SBS7a,SBS7b,SBS7c,SBS7d,SBS8,SBS9,SBS10a,SBS10b,SBS11,SBS12,SBS13,SBS14,SBS15,SBS16,SBS17a,SBS17b,SBS18,SBS19,SBS20,SBS21,SBS22,SBS23,SBS24,SBS25,SBS26,SBS27,SBS28,SBS29,SBS30,SBS31,SBS32,SBS33,SBS34,SBS35,SBS36,SBS37,SBS38,SBS39,SBS40,SBS41,SBS42,SBS43,SBS44,SBS45,SBS46,SBS47,SBS48,SBS49,SBS50,SBS51,SBS52,SBS53,SBS54,SBS55,SBS56,SBS57,SBS58,SBS59,SBS60
@@ -19,16 +116,26 @@ def main(conversion):
     # target
     # Sig     ACAA    ACAC    ACAG    ACAT    CCAA    CCAC    CCAG    CCAT    GCAA    GCAC    GCAG    GCAT    TCAA    TCAC    TCAG    TCAT    ACGA    ACGC    ACGG    ACGT    CCGA    CCGC    CCGG    CCGT    GCGA    GCGC    GCGG    GCGT    TCGA    TCGC    TCGG    TCGT   ACTA     ACTC    ACTG    ACTT    CCTA    CCTC    CCTG    CCTT    GCTA    GCTC    GCTG    GCTT    TCTA    TCTC    TCTG    TCTT    ATAA    ATAC    ATAG    ATAT    CTAA    CTAC    CTAG    CTAT    GTAA    GTAC    GTAG    GTAT    TTAA    TTAC    TTAG    TTAT    ATCA   ATCC     ATCG    ATCT    CTCA    CTCC    CTCG    CTCT    GTCA    GTCC    GTCG    GTCT    TTCA    TTCC    TTCG    TTCT    ATGA    ATGC    ATGG    ATGT    CTGA    CTGC    CTGG    CTGT    GTGA    GTGC    GTGG    GTGT    TTGA    TTGC    TTGG    TTGT
     #Signature.1     0.011098326166  0.009149340734  0.001490070468  0.006233885236  0.006595870109  0.007342367815  0.00089284037   0.007186581642  0.008232603989  0.00575802141   0.000616335232  0.004459080311  0.012250063666  0.011162229329  0.002275495686  0.015259102491  0.001801068369  0.00258090852   0.000592548022  0.002963986287  0.001284983446  0.000702134818  0.000506289594  0.001381542722  0.000602122711  0.002393352209  2.48534e-07     0.000890080731  0.001874853199  0.002067418791  0.000304897004  0.00315157446  0.029514532745   0.014322747041  0.171646931305  0.012623763151  0.020896446965  0.01850170477   0.095577217268  0.017113307642  0.024943814154  0.027161494035  0.103570762296  0.017689854381  0.014492099634  0.017680775357  0.076002221712  0.013761704021  0.004021520333  0.002371144163  0.002810909959  0.008360909345  0.001182587416  0.001903166857  0.00148796063   0.002179344412  0.000689289439  0.000552409528  0.001200228847  0.002107136837  0.005600155423  0.00199907926   0.001090065693  0.003981022761  0.01391577303  0.0062749606     0.010137636154  0.009256316389  0.004176674882  0.005252593331  0.00701322531   0.006713813119  0.011247835116  0.006999724257  0.004977592617  0.010667406133  0.008073616351  0.004857381178  0.008325454207  0.006257105605  0.001587636423  0.001784091288  0.001385830552  0.003158539312  0.000302691186  0.00209850244   0.0015995485    0.002758537619  9.9045003e-05   0.000202365646  0.001188353185  0.000800723342  0.001397553749  0.001291736985  0.00203107688   0.00403012816
-    header = sys.stdin.readline().strip('\r\n').split(',')
+
+    # 3.2 uses tabs
+    delimiter = '\t' if conversion == 'sbs32' else ','
+
+    header = sys.stdin.readline().strip('\r\n').split(delimiter)
   
     result = collections.defaultdict(dict)
     contexts = set()
     for line in sys.stdin:
-      fields = line.strip('\r\n').split(',')
-      context = '{}{}{}{}'.format(fields[1][0], fields[1][1], fields[0][2], fields[1][2]) # C>A,ACA => ACAA
-      contexts.add(context)
-      for idx, value in enumerate(fields[2:]):
-        result[header[idx + 2]][context] = value
+      fields = line.strip('\r\n').split(delimiter)
+      if conversion == 'sbs32':
+        context = '{}{}{}{}'.format(fields[0][0], fields[0][2], fields[0][4], fields[0][6]) # A[C>A]A => ACAA
+        contexts.add(context)
+        for idx, value in enumerate(fields[1:]):
+          result[header[idx + 1]][context] = value
+      else:
+        context = '{}{}{}{}'.format(fields[1][0], fields[1][1], fields[0][2], fields[1][2]) # C>A,ACA => ACAA
+        contexts.add(context)
+        for idx, value in enumerate(fields[2:]):
+          result[header[idx + 2]][context] = value
   
     logging.info('read %i contexts', len(contexts))
     
@@ -38,14 +145,15 @@ def main(conversion):
     for sig in sorted(result.keys()):
       sys.stdout.write('{}\t{}\n'.format(sig, '\t'.join([result[sig][context] for context in contexts_list])))
 
-  elif conversion == 'db':
+  elif conversion == 'db' or conversion == 'db32':
     # Mutation Type,DBS1,DBS2,DBS3,DBS4,DBS5,DBS6,DBS7,DBS8,DBS9,DBS10,DBS11
     # AC>CA,4.97E-05,3.74E-04,6.35E-03,4.14E-03,2.14E-03,2.66E-03,4.59E-02,2.15E-01,2.46E-02,9.63E-03,1.37E-03
-    header = sys.stdin.readline().strip('\r\n').split(',')
+    delimiter = '\t' if conversion == 'db32' else ','
+    header = sys.stdin.readline().strip('\r\n').split(delimiter)
     result = collections.defaultdict(dict)
     contexts = set()
     for line in sys.stdin:
-      fields = line.strip('\r\n').split(',') # 
+      fields = line.strip('\r\n').split(delimiter) # 
       contexts.add(fields[0])
       for idx, value in enumerate(fields[1:]):
         result[header[idx + 1]][fields[0]] = value
@@ -59,17 +167,19 @@ def main(conversion):
       sys.stdout.write('{}\t{}\n'.format(sig, '\t'.join([result[sig][context] for context in contexts_list])))
 
 
-  elif conversion == 'id':
+  elif conversion in ('id', 'id32'):
     # Mutation Type,ID1,ID2,ID3,ID4,ID5,ID6,ID7,ID8,ID9,ID10,ID11,ID12,ID13,ID14,ID15,ID16,ID17
     # DEL_C_1_0,0.000159889,0.004824116,0.124727109,0.007249717,0.022202108,0.030506799,0.000466561,0.039827558,0.334939881,0.025105414,0.001576565,0.052787741,0.065548371,0.012016009,0.026527369337078000000000000000000000,0.000952768885842137000000000000000000,0.006117598535198470000000000000000000
-    header = sys.stdin.readline().strip('\r\n').split(',')
+    delimiter = '\t' if conversion == 'id32' else ','
+    header = sys.stdin.readline().strip('\r\n').split(delimiter)
     result = collections.defaultdict(dict)
     contexts = set()
     for line in sys.stdin:
-      fields = line.strip('\r\n').split(',') # 
-      contexts.add(fields[0])
+      fields = line.strip('\r\n').split(delimiter) # 
+      context = INDEL_MAP.get(fields[0], fields[0])
+      contexts.add(context)
       for idx, value in enumerate(fields[1:]):
-        result[header[idx + 1]][fields[0]] = value
+        result[header[idx + 1]][context] = value
   
     logging.info('read %i contexts', len(contexts))
     
@@ -111,8 +221,8 @@ def main(conversion):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Assess MSI')
-  parser.add_argument('--conversion', help='specify conversion type sbs db id sbstx')
+  parser = argparse.ArgumentParser(description='Convert COSMIC signatures to our format')
+  parser.add_argument('--conversion', help='specify conversion type sbs db id sbstx sbs32')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
