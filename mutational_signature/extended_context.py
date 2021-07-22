@@ -94,7 +94,7 @@ def update_chroms(required, chroms, genome, next_chrom):
   logging.info('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
   return None
 
-def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
+def assess(genome_fh, vcf_in, out, transcripts_fn, rules, output):
   logging.info('processing vcf...')
 
   chroms = {}
@@ -116,8 +116,17 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
   counts = [[0, 0] for _ in rules] # any mutation, specific mutation
   tx_counts = [[0, 0, 0, 0] for _ in rules] # any mutation pos, specific mutation pos, any mutation neg, specific mutation neg
   tx_strand = None
-  considered = 0
+  considered = indels = 0
+
+  if output is not None:
+    logging.info('writing variant annotation to %s', output)
+    output_fh = csv.DictWriter(open(output, 'w'), delimiter='\t', fieldnames=['chrom', 'pos', 'ref', 'alt', 'result', 'detail'])
+    output_fh.writeheader()
+  else:
+    output_fh = None
+
   for line, variant in enumerate(vcf_in):
+    variant_passed = False
     chrom = no_chr(variant.CHROM)
     if chrom not in chroms_seen:
       logging.debug('chrom %s seen in vcf', chrom)
@@ -127,6 +136,9 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
     if False:
       filtered += 1
       continue
+
+    if len(variant.REF) != len(variant.ALT[0]):
+      indels += 1
 
     considered += 1
 
@@ -142,12 +154,14 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
         logging.debug('%i multiple intersections at %s:%i: first is %s', len(intersections), chrom, variant.POS, tx_strand) # can't decide
       else:
         tx_strand = list(intersections)[0][2]
+
       if tx_strand == '+':
         tx_strand_idx = 0
       elif tx_strand == '-':
         tx_strand_idx = 2
       else:
-        logging.warn('surprising tx strand: %s', tx_strand)
+        pass
+        # logging.warn('surprising tx strand: %s', tx_strand) # actually not surprising
 
     # assess each rule
     for idx, rule in enumerate(rules):
@@ -232,13 +246,24 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
             break # while
           current_pos += 1
 
-        if passes: # no rule failed
+        if passes: # this rule passed
           logging.debug('variant at %s:%i %s>%s passed rule %s', chrom, variant.POS, variant.REF, variant.ALT[0], rule)
           counts[idx][1] += 1
           if tx_strand is not None:
             tx_counts[idx][1 + tx_strand_idx] += 1
+          variant_passed = True
+          variant_rule = rule
+        else: # this rule failed
+          pass
 
-    if line % 100 == 0:
+    if variant_passed:
+      if output_fh is not None:
+        output_fh.writerow({'chrom': chrom, 'pos': variant.POS, 'ref': variant.REF, 'alt': variant.ALT[0], 'result': 'PASS', 'detail': ','.join(variant_rule)}) # the last rule passed
+    else:
+      if output_fh is not None:
+        output_fh.writerow({'chrom': chrom, 'pos': variant.POS, 'ref': variant.REF, 'alt': variant.ALT[0], 'result': 'FAIL', 'detail': ''})
+
+    if line % 1000 == 0:
       logging.info('processed %i variants with interim results %s', line, counts)
 
   # now write out results
@@ -270,6 +295,7 @@ def assess(genome_fh, vcf_in, out, transcripts_fn, rules):
     out.write('{}\t{}\t{}\t{}\n'.format('TOTAL', counts_0, counts_1, 0)) 
 
   # all mutations
+  out.write('{}\t{}\t{}\t{}\n'.format('Indels', indels, 0, 0)) 
   out.write('{}\t{}\t{}\t{}\n'.format('Considered', considered, 0, 0)) 
 
 def get_value(header, col, row):
@@ -328,6 +354,7 @@ if __name__ == '__main__':
   parser.add_argument('--maf_pos_column', required=False, default='Start_Position', help='maf pos column name')
   parser.add_argument('--maf_ref_column', required=False, default='Reference_Allele', help='maf ref column name')
   parser.add_argument('--maf_alt_column', required=False, default='Tumor_Seq_Allele2', help='maf alt column name')
+  parser.add_argument('--output', required=False, help='write individual variant annotations to file')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -340,4 +367,4 @@ if __name__ == '__main__':
   else:
     vcf_in = cyvcf2.VCF(args.vcf)
 
-  assess(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=sys.stdout, transcripts_fn=args.transcripts, rules=args.rules)
+  assess(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=sys.stdout, transcripts_fn=args.transcripts, rules=args.rules, output=args.output)

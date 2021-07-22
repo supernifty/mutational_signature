@@ -68,7 +68,7 @@ Assign artefact probability
 ```
 ```
 
-Generate de novo signatures
+### Generate de novo signatures
 ```
 python mutational_signature/generate.py \
   --counts *.counts \
@@ -79,6 +79,13 @@ python mutational_signature/generate.py \
   --bootstraps 100 \
   --bootstrap_plot 'bootstraps.png' \
   --component_plot 'component.png'
+```
+
+### Backward selection based on cosine error:
+```
+python mutational_signature/refine_signatures.py \
+  --signatures data/signatures_cosmic_v3.1_sbs.txt \
+  --verbose < counts_file
 ```
 
 ## Functionality

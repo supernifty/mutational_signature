@@ -127,8 +127,8 @@ def basin_hopping_solver(A, b, metric, max_sigs):
   return result
 
 
-def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_sigs, context_cutoff, error_contribution=False, strand=False):
-  logging.info('starting...')
+def decompose(signatures_fh, counts_fh, out, metric, seed, evaluate, solver, max_sigs, context_cutoff, error_contribution=False, strand=False, counts_column='Count'):
+  logging.debug('starting...')
 
   if seed is not None:
     logging.info('setting random seed to %i', seed)
@@ -138,7 +138,7 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
   names = []
   first = True
   exclude_map = collections.defaultdict(set)
-  for line in open(signatures, 'r'):
+  for line in signatures_fh:
     fields = line.strip('\n\r').split('\t')
     if first:
       first = False
@@ -172,12 +172,14 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
   # Variation Count Probability CodingTx NonCodingTx TxP   CodingExon NonCodingExon   ExonP
   # ACA>A     3     0.001       1        2           1.000 0          1               1.000
   first = True
+  header = None
   total_count = 0
   excluded_signatures = set()
 
   for idx, line in enumerate(counts_fh):
     if first:
       first = False
+      header = line.strip('\n').split('\t')
       continue
     if line.startswith('#'):
       continue
@@ -204,9 +206,9 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
         logging.debug('context %s not in signature definitions', fields[0])
         continue
       signature_index = signature_classes.index(fields[0])
-      b[signature_index] = float(fields[1]) # counts
+      b[signature_index] = float(fields[header.index(counts_column)]) # counts
       #b[signature_index] = float(fields[2]) # percentage
-      total_count += int(fields[1])
+      total_count += int(fields[header.index(counts_column)])
 
     # check for excluded signatures
     if int(fields[1]) == 0:
@@ -226,7 +228,7 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
   b = np.array(b)
 
   if evaluate is None: # find a solution
-    logging.info('finding signatures from %s...', signatures)
+    logging.info('finding signatures...')
     if solver == 'basin':
       solver = basin_hopping_solver
     elif solver == 'grid':
@@ -236,7 +238,7 @@ def decompose(signatures, counts_fh, out, metric, seed, evaluate, solver, max_si
 
 
   else: # use provided solution
-    logging.info('evaluating signatures from %s...', signatures)
+    logging.info('evaluating signatures...')
     result = [0] * len(names)
     for line in open(args.evaluate, 'r'):
       fields = line.strip('\n').split('\t')
@@ -295,7 +297,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature finder')
   parser.add_argument('--signatures', required=True, help='mutational signatures e.g. cosmic')
   parser.add_argument('--counts', required=True, help='counts file')
-  parser.add_argument('--metric', required=False, default='cosine', help='metric. cosine, euclidean, or l1')
+  parser.add_argument('--metric', required=False, default='cosine', help='metric. cosine, euclidean, or l1') # todo: add hellinger
   parser.add_argument('--solver', required=False, default='basin', help='solver. basin, grid')
   parser.add_argument('--max_sigs', required=False, type=int, help='maximum number of sigs to use')
   parser.add_argument('--context_cutoff', required=False, type=float, default=1e6, help='exclude signatures with contexts above this percent that are not represented in the sample') # deconstructSigs = 0.2
@@ -303,6 +305,7 @@ if __name__ == '__main__':
   parser.add_argument('--seed', required=False, type=int, help='random number seed for reproducibility')
   parser.add_argument('--evaluate', required=False, help='evaluate a mutational profile instead of calculating')
   parser.add_argument('--strand', action='store_true', help='strand based signatures')
+  parser.add_argument('--count_column', required=False, default='Count', help='specify column containing counts')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -310,4 +313,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  decompose(args.signatures, open(args.counts, 'r'), sys.stdout, args.metric, args.seed, args.evaluate, args.solver, args.max_sigs, args.context_cutoff, args.error_contribution, args.strand)
+  decompose(open(args.signatures, 'r'), open(args.counts, 'r'), sys.stdout, args.metric, args.seed, args.evaluate, args.solver, args.max_sigs, args.context_cutoff, args.error_contribution, args.strand, args.count_column)
