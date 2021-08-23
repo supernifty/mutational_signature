@@ -229,13 +229,17 @@ def decompose(signatures_fh, counts_fh, out, metric, seed, evaluate, solver, max
 
   if evaluate is None: # find a solution
     logging.info('finding signatures...')
-    if solver == 'basin':
-      solver = basin_hopping_solver
-    elif solver == 'grid':
-      solver = grid_search
 
-    result = solver(A, b, metric, max_sigs)
+    # if no counts, return equal signature probabilities
+    if sum(b) == 0:
+      result = [1.0/len(names)] * len(names)
+    else:
+      if solver == 'basin':
+        solver = basin_hopping_solver
+      elif solver == 'grid':
+        solver = grid_search
 
+      result = solver(A, b, metric, max_sigs)
 
   else: # use provided solution
     logging.info('evaluating signatures...')
@@ -276,7 +280,10 @@ def decompose(signatures_fh, counts_fh, out, metric, seed, evaluate, solver, max
 
   # compare reconstruction
   for m in ('euclidean', 'cosine', 'l1'):
-    error = make_distance(A, b, m, with_composition=True)(result)
+    if sum(b) == 0:
+      error = (0.0, None)
+    else:
+      error = make_distance(A, b, m, with_composition=True)(result)
     logging.info('%s error:\t%.5f', m, error[0])
     if metric == m:
       if metric == 'cosine':

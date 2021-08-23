@@ -96,7 +96,7 @@ def compare(signatures, signatures2, measure, out, no_convert):
   for row, name in enumerate(names1):
     best = np.argsort(similarities[row])[::-1]
     similar = '{} ({:.2f}) {} {}'.format(names2[best[0]], similarities[row][best[0]], names2[best[1]], names2[best[2]])
-    sys.stdout.write('{}\t{}\t{}\n'.format(name, '\t'.join(['{:.2f}'.format(x) for x in similarities[row]]), similar))
+    sys.stdout.write('{}\t{}\t{}\n'.format(name, '\t'.join(['{:.4f}'.format(x) for x in similarities[row]]), similar))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='compare signatures')

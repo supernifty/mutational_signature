@@ -51,7 +51,7 @@ def plot(counts, target, style='sbs', name=None):
   else:
     logging.warn('unrecognised plot type %s', style)
 
-def plot_signature(vals, target, name=None):
+def plot_signature(vals, target, name=None, fontsize=14, figure_width=6, figure_height=2):
   #xs = sorted(vals.keys())
   xs = sorted(['{}>{} {}{}{}'.format(k[1], k[2], k[0], k[1], k[3]) for k in ['ACAA', 'ACAC', 'ACAG', 'ACAT', 'ACGA', 'ACGC', 'ACGG', 'ACGT', 'ACTA', 'ACTC', 'ACTG', 'ACTT', 'ATAA', 'ATAC', 'ATAG', 'ATAT', 'ATCA', 'ATCC', 'ATCG', 'ATCT', 'ATGA', 'ATGC', 'ATGG', 'ATGT', 'CCAA', 'CCAC', 'CCAG', 'CCAT', 'CCGA', 'CCGC', 'CCGG', 'CCGT', 'CCTA', 'CCTC', 'CCTG', 'CCTT', 'CTAA', 'CTAC', 'CTAG', 'CTAT', 'CTCA', 'CTCC', 'CTCG', 'CTCT', 'CTGA', 'CTGC', 'CTGG', 'CTGT', 'GCAA', 'GCAC', 'GCAG', 'GCAT', 'GCGA', 'GCGC', 'GCGG', 'GCGT', 'GCTA', 'GCTC', 'GCTG', 'GCTT', 'GTAA', 'GTAC', 'GTAG', 'GTAT', 'GTCA', 'GTCC', 'GTCG', 'GTCT', 'GTGA', 'GTGC', 'GTGG', 'GTGT', 'TCAA', 'TCAC', 'TCAG', 'TCAT', 'TCGA', 'TCGC', 'TCGG', 'TCGT', 'TCTA', 'TCTC', 'TCTG', 'TCTT', 'TTAA', 'TTAC', 'TTAG', 'TTAT', 'TTCA', 'TTCC', 'TTCG', 'TTCT', 'TTGA', 'TTGC', 'TTGG', 'TTGT']])
   ys = list([vals.get(x, 0) for x in xs])
@@ -80,12 +80,14 @@ def plot_signature(vals, target, name=None):
     ax.axvline(x=x * 16 - 0.5, color='#e0e0e0')
 
   if name is not None:
-    plt.annotate(name, xy=(0.01, 0.95), xycoords='axes fraction', fontsize=14)
+    plt.annotate(name, xy=(0.01, 1-fontsize * 0.003), xycoords='axes fraction', fontsize=fontsize)
 
+  #plt.figure(figsize=(figure_width, figure_height))
   plt.savefig(target, bbox_inches='tight')
+  plt.close()
 
 
-def plot_signature_ids(vals, target, name=None):
+def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, figure_height=2):
   xs = sorted(vals.keys())
 
   contexts = ('DEL_C_1_0', 'DEL_C_1_1', 'DEL_C_1_2', 'DEL_C_1_3', 'DEL_C_1_4', 'DEL_C_1_5+', 
@@ -165,8 +167,10 @@ def plot_signature_ids(vals, target, name=None):
       ax.axvline(x=patch[1] + patch[3]/2 - 0.5, color='#e0e0e0')
 
   if name is not None:
-    plt.annotate(name, xy=(0.01, 0.95), xycoords='axes fraction', fontsize=14)
+    plt.annotate(name, xy=(0.01, 1-fontsize * 0.003), xycoords='axes fraction', fontsize=fontsize)
+  #plt.figure(figsize=(figure_width, figure_height))
   plt.savefig(target, bbox_inches='tight')
+  plt.close()
  
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Plot contexts')
