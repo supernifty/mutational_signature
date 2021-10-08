@@ -18,10 +18,10 @@ import mutational_signature.decompose
 def decompose_bulk(out, signatures_fh, counts, metric, seed, evaluate, solver, max_sigs, context_cutoff, error_contribution=False, strand=False, counts_column='Count'):
   results = []
   seen = set()
-  for c in counts:
+  for i, c in enumerate(counts):
     result = io.StringIO()
     row = {'Filename': c}
-    logging.info('decomposing %s...', c)
+    logging.info('decomposing %i of %i: %s...', i+1, len(counts), c)
     mutational_signature.decompose.decompose(open(args.signatures, 'r'), open(c, 'r'), result, args.metric, args.seed, args.evaluate, args.solver, args.max_sigs, args.context_cutoff, args.error_contribution, args.strand, args.count_column)
     for line in result.getvalue().split('\n'):
       #logging.info('processing %s', line)
@@ -34,6 +34,7 @@ def decompose_bulk(out, signatures_fh, counts, metric, seed, evaluate, solver, m
     results.append(row)
 
   # now write results
+  logging.info('writing %i results...', len(results))
   o = csv.DictWriter(out, delimiter='\t', fieldnames=['Filename'] + sorted(list(seen)))
   o.writeheader()
   for r in results:

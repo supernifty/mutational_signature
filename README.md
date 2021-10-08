@@ -59,13 +59,18 @@ Count available contexts for potential exposure adjustment:
 python mutational_signature/count_contexts.py --genome genome.fa --bed regions.wgs.bed > opportunity.sbs.wgs.tsv
 ```
 
-Adjust counts
+Adjust counts for different captures based on opportunity
 ```
 python mutational_signature/adjust_counts.py --adjust_from opportunity.sbs.cog.tsv --adjust_to opportunity.sbs.exome.tsv --verbose < sample.count
 ```
 
 Assign artefact probability
 ```
+```
+
+Annotate VCF with context and extended sequence
+```
+python mutational_signature/annotate_context.py --genome genome.fa --vcf example/sample.vcf.gz --sequence 6 > x.vcf
 ```
 
 ### Generate de novo signatures

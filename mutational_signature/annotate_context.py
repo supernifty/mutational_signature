@@ -79,7 +79,27 @@ def context(variant, chroms):
   v = normalize(v)
   return v
 
-def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None):
+def surrounding(variant, sequence, chroms):
+  if sequence == 0:
+    return None
+  chrom = variant.CHROM.replace('chr', '')
+  if chrom not in chroms:
+    logging.info('skipping chromosome %s', chrom)
+    return None
+  if variant.POS < sequence or variant.POS > len(chroms[chrom]) - sequence:
+    logging.info('skipped edge variant at %s:%i', chrom, variant.POS)
+    return None
+
+  # 0 1 2 -> my indexes
+  # 1 2 3 -> vcf indexes
+  fragment = chroms[chrom][variant.POS - sequence - 1:variant.POS + sequence].upper() # TODO should we instead skip lower case
+  if fragment[sequence] != variant.REF:
+    logging.warn('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', chrom, variant.POS, variant.REF, fragment)
+    return
+
+  return fragment
+
+def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None, sequence=0):
   logging.info('processing %s...', vcf)
 
   if chroms is None:
@@ -94,6 +114,8 @@ def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None):
 
   vcf_in = cyvcf2.VCF(vcf)
   vcf_in.add_info_to_header({'ID': 'snv_context', 'Description': 'mutational signature trinucleotide context', 'Type':'Character', 'Number': '1'})
+  if sequence > 0:
+    vcf_in.add_info_to_header({'ID': 'surrounding', 'Description': 'reference sequence surrounding variant', 'Type':'Character', 'Number': '1'})
   sys.stdout.write(vcf_in.raw_header)
 
   for line, variant in enumerate(vcf_in):
@@ -110,6 +132,11 @@ def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None):
     snv_context = context(variant, chroms)
     if snv_context is not None:
       variant.INFO["snv_context"] = snv_context
+
+    surrounding_context = surrounding(variant, sequence, chroms)
+    if surrounding_context is not None:
+      variant.INFO["surrounding"] = surrounding_context
+
     sys.stdout.write(str(variant))
 
     if (line + 1) % 100000 == 0:
@@ -120,7 +147,12 @@ def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')
   parser.add_argument('--genome', required=True, help='reference genome')
+  parser.add_argument('--sequence', required=False, default=0, type=int, help='surrounding sequence in each direction to annotate, 0 to skip')
   parser.add_argument('--vcf', required=True, help='vcf')
+  parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
-  logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
-  annotate(open(args.genome, 'r'), args.vcf, sys.stdout)
+  if args.verbose:
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
+  else:
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
+  annotate(open(args.genome, 'r'), args.vcf, sys.stdout, sequence=args.sequence)

@@ -19,12 +19,12 @@ INDEL_COMP = {'A': 'T', 'C': 'C', 'G': 'C', 'T': 'T'} # normalize to C or T
 
 def normalize_sbs(v):
   '''
-    input GAT => ATC
+    input GAT>G => ATC>C
   '''
   if v[1] in ('C', 'T'):
     return v # ok
   else:
-    return ''.join([COMP[v[2]], COMP[v[1]], COMP[v[0]]]) #, '>', COMP[v[4]]])
+    return ''.join([COMP[v[2]], COMP[v[1]], COMP[v[0]], '>', COMP[v[4]]])
 
 DOUBLETS = set(['AC>CA', 'AC>CG', 'AC>CT', 'AC>GA', 'AC>GG', 'AC>GT', 'AC>TA', 'AC>TG', 'AC>TT', 'AT>CA', 'AT>CC', 'AT>CG', 'AT>GA', 'AT>GC', 'AT>TA', 'CC>AA', 'CC>AG', 'CC>AT', 'CC>GA', 'CC>GG', 'CC>GT', 'CC>TA', 'CC>TG', 'CC>TT', 'CG>AT', 'CG>GC', 'CG>GT', 'CG>TA', 'CG>TC', 'CG>TT', 'CT>AA', 'CT>AC', 'CT>AG', 'CT>GA', 'CT>GC', 'CT>GG', 'CT>TA', 'CT>TC', 'CT>TG', 'GC>AA', 'GC>AG', 'GC>AT', 'GC>CA', 'GC>CG', 'GC>TA', 'TA>AT', 'TA>CG', 'TA>CT', 'TA>GC', 'TA>GG', 'TA>GT', 'TC>AA', 'TC>AG', 'TC>AT', 'TC>CA', 'TC>CG', 'TC>CT', 'TC>GA', 'TC>GG', 'TC>GT', 'TG>AA', 'TG>AC', 'TG>AT', 'TG>CA', 'TG>CC', 'TG>CT', 'TG>GA', 'TG>GC', 'TG>GT', 'TT>AA', 'TT>AC', 'TT>AG', 'TT>CA', 'TT>CC', 'TT>CG', 'TT>GA', 'TT>GC', 'TT>GG'])
 
@@ -70,7 +70,7 @@ def update_chroms(required, chroms, genome, next_chrom):
   return None
 
 def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False):
-  if pos == 1 or pos >= len(chroms[chrom]):
+  if pos == 1 or pos > len(chroms[chrom]):
     logging.info('skipped edge variant at %s:%i', chrom, pos)
     return
 
@@ -170,7 +170,7 @@ def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, d
   # 1 2 3 -> vcf indexes
   # pulling in -1 0 +1
   fragment = chroms[chrom][pos - 2:pos + 1].upper() # potentially could instead skip lower case
-  if any([x not in 'ACGTacgt' for x in fragment]) or len(fragment) < 3:
+  if any([x not in 'ACGTacgt' for x in fragment]):
     return
   v = '{}>{}'.format(fragment, 'A') # G is dummy
   v = normalize_sbs(v)[:3] # just the 1st three

@@ -205,7 +205,11 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
           break
       category['repeats'] = '5+' if repeats >= 5 else repeats
       if del_length == -1:
-        category['content'] = INDEL_COMP[inserted_sequence]
+        if inserted_sequence not in INDEL_COMP:
+          logging.warn('unexpected inserted sequence %s', inserted_sequence)
+          category['content'] = 'unknown'
+        else:
+          category['content'] = INDEL_COMP[inserted_sequence]
       else: # insertion length > 1
         category['content'] = 'repeats'
 
