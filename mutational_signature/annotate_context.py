@@ -92,9 +92,9 @@ def surrounding(variant, sequence, chroms):
 
   # 0 1 2 -> my indexes
   # 1 2 3 -> vcf indexes
-  fragment = chroms[chrom][variant.POS - sequence - 1:variant.POS + sequence].upper() # TODO should we instead skip lower case
-  if fragment[sequence] != variant.REF:
-    logging.warn('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', chrom, variant.POS, variant.REF, fragment)
+  fragment = chroms[chrom][variant.POS - sequence - 1:variant.POS + sequence + len(variant.REF) - 1].upper() # TODO should we instead skip lower case
+  if fragment[sequence:sequence + len(variant.REF)] != variant.REF:
+    logging.warn('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s', chrom, variant.POS, variant.REF, fragment)
     return
 
   return fragment
@@ -142,7 +142,7 @@ def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None, sequenc
     if (line + 1) % 100000 == 0:
       logging.debug('processed %i lines...', line + 1)
     
-  logging.info('processing %s: filtered %i. done', vcf, filtered)
+  logging.info('processing %s: filtered %i of %i. done', vcf, filtered, line)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')

@@ -71,6 +71,7 @@ Assign artefact probability
 Annotate VCF with context and extended sequence
 ```
 python mutational_signature/annotate_context.py --genome genome.fa --vcf example/sample.vcf.gz --sequence 6 > x.vcf
+python mutational_signature/annotate_context_summary.py --vcfs x.vcf --sequence 6 --lengths 3 2 1 > y.tsv
 ```
 
 ### Generate de novo signatures
