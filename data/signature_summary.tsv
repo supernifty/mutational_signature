@@ -42,7 +42,7 @@ SBS35	Platinum treatment	CCC>CTC
 SBS36	MUTYH (BER)	TCT>TAT
 SBS37	? (AID https://www.pnas.org/cgi/doi/10.1073/pnas.1914163116)	ATA>ACA
 SBS38	UV?	CCA>CAA
-SBS39	? (pol-n https://www.pnas.org/cgi/doi/10.1073/pnas.1914163116)  TCT>TGT
+SBS39	? (pol-n https://www.pnas.org/cgi/doi/10.1073/pnas.1914163116)	TCT>TGT
 SBS40	Aging for some cancers	TCA>TTA
 SBS41	?	TTT>TGT
 SBS42	Haloalkane exposure	GCC>GTC
