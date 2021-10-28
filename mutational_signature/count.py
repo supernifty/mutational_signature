@@ -64,7 +64,7 @@ def update_chroms(required, chroms, genome, next_chrom):
         # remove previous chromosomes
         chroms[next_chrom] = ''.join(seq)
         seq = []
-        logging.info('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
+        logging.debug('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
         if required == next_chrom:
           next_chrom = no_chr(line[1:].split(' ')[0])
           logging.debug('required chrom %s found', next_chrom)
@@ -94,7 +94,7 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     return
 
   if variant.POS == 1 or variant.POS > len(chroms[no_chr(variant.CHROM)]):
-    logging.info('skipped edge variant at %s:%i', no_chr(variant.CHROM), variant.POS)
+    logging.debug('skipped edge variant at %s:%i', no_chr(variant.CHROM), variant.POS)
     return
 
   exon_strand = None
@@ -269,7 +269,7 @@ def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, do
     chroms_seen = set()
   else:
     chroms_seen = set(chroms.keys())
-    logging.info('using existing genome with %i chromosomes', len(chroms_seen))
+    logging.debug('using existing genome with %i chromosomes', len(chroms_seen))
 
   all_counts = [collections.defaultdict(int) for _ in range(len(variant_filters))]
 
@@ -371,7 +371,7 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
     chroms_seen = set()
   else:
     chroms_seen = set(chroms.keys())
-    logging.info('using existing genome with %i chromosomes', len(chroms_seen))
+    logging.debug('using existing genome with %i chromosomes', len(chroms_seen))
 
   if transcripts_fn is not None:
     transcripts, exons = read_transcripts(transcripts_fn)

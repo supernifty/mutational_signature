@@ -60,7 +60,7 @@ def context(variant, chroms):
   if variant.POS == 1 or variant.POS > len(chroms[chrom]):
     logging.info('skipped edge variant at %s:%i', chrom, variant.POS)
     return None
-  if len(variant.REF) != 1 or len(variant.ALT[0]) != 1:
+  if len(variant.REF) != 1 or len(variant.ALT) == 0 or len(variant.ALT[0]) != 1:
     logging.debug('skipped indel at %s:%i', chrom, variant.POS)
     return None
 
@@ -118,6 +118,7 @@ def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None, sequenc
     vcf_in.add_info_to_header({'ID': 'surrounding', 'Description': 'reference sequence surrounding variant', 'Type':'Character', 'Number': '1'})
   sys.stdout.write(vcf_in.raw_header)
 
+  line = 0
   for line, variant in enumerate(vcf_in):
     chrom = variant.CHROM.replace('chr', '')
     if chrom not in chroms_seen:
@@ -139,7 +140,7 @@ def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None, sequenc
 
     sys.stdout.write(str(variant))
 
-    if (line + 1) % 100000 == 0:
+    if (line + 1) % 10000 == 0:
       logging.debug('processed %i lines...', line + 1)
     
   logging.info('processing %s: filtered %i of %i. done', vcf, filtered, line)

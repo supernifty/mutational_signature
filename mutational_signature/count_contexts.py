@@ -17,14 +17,18 @@ COMP = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 INDEL_COMP = {'A': 'T', 'C': 'C', 'G': 'C', 'T': 'T'} # normalize to C or T
 
 
-def normalize_sbs(v):
+def normalize_sbs(v, context_length=1):
   '''
     input GAT>G => ATC>C
   '''
-  if v[1] in ('C', 'T'):
+  if v[context_length] in ('C', 'T'):
     return v # ok
   else:
-    return ''.join([COMP[v[2]], COMP[v[1]], COMP[v[0]], '>', COMP[v[4]]])
+    #return ''.join([COMP[v[2]], COMP[v[1]], COMP[v[0]], '>', COMP[v[4]]])
+    return ''.join(
+      [''.join([COMP[x] for x in v[:-2][::-1]]), 
+      '>', 
+      COMP[v[-1]]])
 
 DOUBLETS = set(['AC>CA', 'AC>CG', 'AC>CT', 'AC>GA', 'AC>GG', 'AC>GT', 'AC>TA', 'AC>TG', 'AC>TT', 'AT>CA', 'AT>CC', 'AT>CG', 'AT>GA', 'AT>GC', 'AT>TA', 'CC>AA', 'CC>AG', 'CC>AT', 'CC>GA', 'CC>GG', 'CC>GT', 'CC>TA', 'CC>TG', 'CC>TT', 'CG>AT', 'CG>GC', 'CG>GT', 'CG>TA', 'CG>TC', 'CG>TT', 'CT>AA', 'CT>AC', 'CT>AG', 'CT>GA', 'CT>GC', 'CT>GG', 'CT>TA', 'CT>TC', 'CT>TG', 'GC>AA', 'GC>AG', 'GC>AT', 'GC>CA', 'GC>CG', 'GC>TA', 'TA>AT', 'TA>CG', 'TA>CT', 'TA>GC', 'TA>GG', 'TA>GT', 'TC>AA', 'TC>AG', 'TC>AT', 'TC>CA', 'TC>CG', 'TC>CT', 'TC>GA', 'TC>GG', 'TC>GT', 'TG>AA', 'TG>AC', 'TG>AT', 'TG>CA', 'TG>CC', 'TG>CT', 'TG>GA', 'TG>GC', 'TG>GT', 'TT>AA', 'TT>AC', 'TT>AG', 'TT>CA', 'TT>CC', 'TT>CG', 'TT>GA', 'TT>GC', 'TT>GG'])
 
@@ -69,8 +73,8 @@ def update_chroms(required, chroms, genome, next_chrom):
   logging.info('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
   return None
 
-def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False):
-  if pos == 1 or pos > len(chroms[chrom]):
+def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False, context_length=1):
+  if pos <= context_length or pos > len(chroms[chrom]) - context_length:
     logging.info('skipped edge variant at %s:%i', chrom, pos)
     return
 
@@ -169,11 +173,11 @@ def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, d
   # 0 1 2 -> my indexes
   # 1 2 3 -> vcf indexes
   # pulling in -1 0 +1
-  fragment = chroms[chrom][pos - 2:pos + 1].upper() # potentially could instead skip lower case
+  fragment = chroms[chrom][pos - 1 - context_length:pos + context_length].upper() # potentially could instead skip lower case
   if any([x not in 'ACGTacgt' for x in fragment]):
     return
   v = '{}>{}'.format(fragment, 'A') # G is dummy
-  v = normalize_sbs(v)[:3] # just the 1st three
+  v = normalize_sbs(v, context_length)[:(2 * context_length + 1)] # just the context
   counts[v] += 1
 
   # --- doublets
@@ -187,7 +191,7 @@ def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, d
         counts[doublet] += 1
         logging.debug('doublet found at %s:%s: %s', variant.CHROM, variant.POS, doublet)
 
-def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False):
+def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False, context_length=1):
   logging.info('processing %s...', bed)
 
   if chroms is None:
@@ -215,7 +219,8 @@ def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=Fal
       chroms_seen.add(chrom)
 
     for pos in range(start, finish):
-      update_counts(counts, chrom, pos, chroms)
+      #def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False, context_length=1):
+      update_counts(counts, chrom, pos, chroms, context_length=context_length)
 
     if (idx + 1) % 100 == 0:
       logging.debug('processed %i lines. current counts: %s...', idx + 1, ' '.join(['{}:{}'.format(k, counts[k]) for k in counts]))
@@ -230,7 +235,7 @@ def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=Fal
       out.write('{}\t{}\t{:.3f}\n'.format(k, counts[k], counts[k] / total_count))
 
     # add zero results for SBS
-    if not just_indels:
+    if not just_indels and context_length == 1:
       for ref in ('C', 'T'):
         for prefix in ('A', 'C', 'G', 'T'):
           for suffix in ('A', 'C', 'G', 'T'):
@@ -258,10 +263,11 @@ if __name__ == '__main__':
   parser.add_argument('--bed', required=True, help='regions to consider')
   parser.add_argument('--indels', action='store_true', help='consider indels') # not supported
   parser.add_argument('--doublets', action='store_true', help='consider doublets') # not supported
+  parser.add_argument('--context_length', required=False, default=1, type=int, help='how far to go from mutation in each direction') # not supported
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
-  count(genome_fh=open(args.genome, 'r'), bed=args.bed, out=sys.stdout)
+  count(genome_fh=open(args.genome, 'r'), bed=args.bed, out=sys.stdout, context_length=args.context_length)

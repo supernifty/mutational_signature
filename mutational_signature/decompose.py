@@ -93,7 +93,7 @@ def grid_search(A, b, metric, max_sigs):
   best = (None, 1e9)
   dist_fn = make_distance(A, b, metric)
   for sigs in range(1, max_sigs + 1):
-    logging.info('finding best with sig length %i', sigs)
+    logging.debug('finding best with sig length %i', sigs)
     for tried, subsig in enumerate(itertools.combinations(range(0, A.shape[1]), sigs)): # all combinations of the specified number of sigs
       for weights in itertools.product(range(1, len(subsig) + 1), repeat=len(subsig)):
         candidate = [0] * A.shape[1]
@@ -228,7 +228,7 @@ def decompose(signatures_fh, counts_fh, out, metric, seed, evaluate, solver, max
   b = np.array(b)
 
   if evaluate is None: # find a solution
-    logging.info('finding signatures...')
+    logging.debug('finding signatures...')
 
     # if no counts, return equal signature probabilities
     if sum(b) == 0:
@@ -242,7 +242,7 @@ def decompose(signatures_fh, counts_fh, out, metric, seed, evaluate, solver, max
       result = solver(A, b, metric, max_sigs)
 
   else: # use provided solution
-    logging.info('evaluating signatures...')
+    logging.debug('evaluating signatures...')
     result = [0] * len(names)
     for line in open(args.evaluate, 'r'):
       fields = line.strip('\n').split('\t')
