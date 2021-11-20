@@ -13,6 +13,8 @@ SBS8	?	ACC>AAC
 SBS9	Hypermutation in lymphoid cells	TTA>TGA
 SBS10a	POLE exonuclease	TCT>TAT
 SBS10b	POLE exonuclease	TCG>TTG
+SBS10c	POLD1	TCT>TAT
+SBS10d	POLD1	TCT>TAT
 SBS11	Alkylating agents	TCC>TTC
 SBS12	?	TTA>TCA
 SBS13	AID/APOBEC	TCT>TGT
