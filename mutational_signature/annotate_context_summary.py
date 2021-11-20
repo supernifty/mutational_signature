@@ -17,7 +17,8 @@ def reverse_complement(repeat):
 # TODO handle indels
 def normalized_sequence(variant, normalize):
   ctx = variant.INFO['surrounding']
-  if not normalize or variant.REF in ('C', 'T'):
+  logging.debug('considering %s with %s>%s', ctx, variant.REF, variant.ALT[0])
+  if not normalize or variant.REF[0] in ('C', 'T'):
     return ctx
   else:
     return reverse_complement(ctx)
@@ -27,6 +28,7 @@ def normalized_sequence_with_ref_alt(sub, variant, normalize):
   if not normalize or variant.REF[0] in ('C', 'T'):
     return '{}|{}>{}'.format(sub, variant.REF, variant.ALT[0])
   else:
+    # sub is already normalised
     return '{}|{}>{}'.format(sub, reverse_complement(variant.REF), reverse_complement(variant.ALT[0]))
 
 def main(vcfs, sequence, lengths, normalize, snvs, proportions, smooth):
@@ -45,11 +47,13 @@ def main(vcfs, sequence, lengths, normalize, snvs, proportions, smooth):
         # e.g. sequence=6 length=3
         #sub = ctx[sequence-length:-(sequence-length)]
         sub = ctx[sequence-length:sequence+length+1] # will include some of ref
+        logging.debug('adding context %s', sub)
         ctxs.add(sub)
         if sub not in result[vcf]:
           result[vcf][sub] = 0
         result[vcf][sub] += 1
         with_alt = normalized_sequence_with_ref_alt(sub, variant, normalize) #'{}>{}'.format(sub, variant.ALT[0])
+        logging.debug('adding context %s', with_alt)
         ctxs.add(with_alt)
         if with_alt not in result[vcf]:
           result[vcf][with_alt] = 0

@@ -73,12 +73,12 @@ def update_chroms(required, chroms, genome, next_chrom):
   logging.info('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
   return None
 
-def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False, context_length=1):
+def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False, context_length=1, contexts_fh=None, contexts_of_interest=None):
   if pos <= context_length or pos > len(chroms[chrom]) - context_length:
     logging.info('skipped edge variant at %s:%i', chrom, pos)
     return
 
-  if indels and len(variant.REF) != len(variant.ALT[0]):
+  if indels:
     logging.warn('not supported')
     return
 
@@ -156,6 +156,9 @@ def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, d
 
     indel_category = '{category}_{content}_{length}_{repeats}'.format(**category)
     counts[indel_category] += 1
+    if contexts_fh is not None and (contexts_of_interest is None or indel_category in contexts_of_interest):
+      contexts_fh.write('{}\t{}\t{}\t{}\t{}\n'.format(chrom, pos, variant.REF, variant.ALT, indel_category))
+
     #logging.debug('indel at %s:%s %s -> %s classified as %s', variant.CHROM, variant.POS, variant.REF, variant.ALT[0], indel_category)
     if indel_category not in INDELS:
       logging.warn('unexpected indel category %s', indel_category)
@@ -179,6 +182,8 @@ def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, d
   v = '{}>{}'.format(fragment, 'A') # G is dummy
   v = normalize_sbs(v, context_length)[:(2 * context_length + 1)] # just the context
   counts[v] += 1
+  if contexts_fh is not None and (contexts_of_interest is None or v in contexts_of_interest):
+    contexts_fh.write('{}\t{}\t{}\t{}\n'.format(chrom, pos, chroms[chrom][pos], v))
 
   # --- doublets
   if doublets:
@@ -189,9 +194,11 @@ def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, d
       else:
         doublet = normalize_doublet(doublet)
         counts[doublet] += 1
+        if contexts_fh is not None and (contexts_of_interest is None or doublet in contexts_of_interest):
+          contexts_fh.write('{}\t{}\t{}\t{}\n'.format(chrom, pos, chroms[chrom][pos], doublet))
         logging.debug('doublet found at %s:%s: %s', variant.CHROM, variant.POS, doublet)
 
-def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False, context_length=1):
+def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False, context_length=1, write_contexts=None, contexts_of_interest=None):
   logging.info('processing %s...', bed)
 
   if chroms is None:
@@ -204,6 +211,11 @@ def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=Fal
   counts = collections.defaultdict(int)
   next_chrom = None
   filtered = 0
+
+  write_fh = None
+  if write_contexts is not None:
+    write_fh = open(write_contexts, 'w')
+    contexts_of_interest = set(contexts_of_interest)
 
   for idx, line in enumerate(open(bed, 'r')):
     fields = line.strip('\n').split('\t')
@@ -220,7 +232,7 @@ def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=Fal
 
     for pos in range(start, finish):
       #def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False, context_length=1):
-      update_counts(counts, chrom, pos, chroms, context_length=context_length)
+      update_counts(counts, chrom, pos, chroms, context_length=context_length, contexts_fh=write_fh, contexts_of_interest=contexts_of_interest)
 
     if (idx + 1) % 100 == 0:
       logging.debug('processed %i lines. current counts: %s...', idx + 1, ' '.join(['{}:{}'.format(k, counts[k]) for k in counts]))
@@ -263,11 +275,13 @@ if __name__ == '__main__':
   parser.add_argument('--bed', required=True, help='regions to consider')
   parser.add_argument('--indels', action='store_true', help='consider indels') # not supported
   parser.add_argument('--doublets', action='store_true', help='consider doublets') # not supported
-  parser.add_argument('--context_length', required=False, default=1, type=int, help='how far to go from mutation in each direction') # not supported
+  parser.add_argument('--context_length', required=False, default=1, type=int, help='how far to go from mutation in each direction') 
+  parser.add_argument('--write_contexts', required=False, help='write chrom pos ref for matching')
+  parser.add_argument('--contexts_of_interest', required=False, nargs='*', help='contexts of interest')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
-  count(genome_fh=open(args.genome, 'r'), bed=args.bed, out=sys.stdout, context_length=args.context_length)
+  count(genome_fh=open(args.genome, 'r'), bed=args.bed, out=sys.stdout, context_length=args.context_length, write_contexts=args.write_contexts, contexts_of_interest=args.contexts_of_interest)

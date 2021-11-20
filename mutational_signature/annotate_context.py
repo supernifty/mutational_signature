@@ -80,6 +80,7 @@ def context(variant, chroms):
   return v
 
 def surrounding(variant, sequence, chroms):
+  ''' note that we do not normalize anything here'''
   if sequence == 0:
     return None
   chrom = variant.CHROM.replace('chr', '')
