@@ -72,6 +72,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     xs = []
     samples.append(row[0]) # assume sample name first column
     for i, o in enumerate(order): # each signature
+      logging.debug('processing line %i: extracting %s...', idx, o)
       val = float(row[header.index(o)])
       xs.append(val)
       if val > threshold:

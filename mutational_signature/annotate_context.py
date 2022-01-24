@@ -5,6 +5,7 @@
 
 import argparse
 import collections
+import csv
 import logging
 import sys
 
@@ -100,8 +101,24 @@ def surrounding(variant, sequence, chroms):
 
   return fragment
 
-def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None, sequence=0):
-  logging.info('processing %s...', vcf)
+def vcf_writer(out):
+  def write_header(vcf_in):
+    out.write(vcf_in.raw_header)
+
+  def write_variant(variant, snv_context, surrounding_context):
+    if snv_context is not None:
+      variant.INFO["snv_context"] = snv_context
+    if surrounding_context is not None:
+      variant.INFO["surrounding"] = surrounding_context
+    out.write(str(variant))
+
+  def add_to_header(d):
+    vcf_in.add_info_to_header(d)
+
+  return {'write_header': write_header, 'write_variant': write_variant, 'add_to_header': add_to_header}
+
+def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequence=0):
+  logging.info('processing...')
 
   if chroms is None:
     chroms = {}
@@ -113,11 +130,11 @@ def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None, sequenc
   next_chrom = None
   filtered = 0
 
-  vcf_in = cyvcf2.VCF(vcf)
-  vcf_in.add_info_to_header({'ID': 'snv_context', 'Description': 'mutational signature trinucleotide context', 'Type':'Character', 'Number': '1'})
+  #vcf_in = cyvcf2.VCF(vcf)
+  out['add_to_header']({'ID': 'snv_context', 'Description': 'mutational signature trinucleotide context', 'Type':'Character', 'Number': '1'})
   if sequence > 0:
-    vcf_in.add_info_to_header({'ID': 'surrounding', 'Description': 'reference sequence surrounding variant', 'Type':'Character', 'Number': '1'})
-  sys.stdout.write(vcf_in.raw_header)
+    out['add_to_header']({'ID': 'surrounding', 'Description': 'reference sequence surrounding variant', 'Type':'Character', 'Number': '1'})
+  out['write_header'](vcf_in)
 
   line = 0
   for line, variant in enumerate(vcf_in):
@@ -132,29 +149,79 @@ def annotate(genome_fh, vcf, out=None, chroms=None, variant_filter=None, sequenc
       continue
 
     snv_context = context(variant, chroms)
-    if snv_context is not None:
-      variant.INFO["snv_context"] = snv_context
-
     surrounding_context = surrounding(variant, sequence, chroms)
-    if surrounding_context is not None:
-      variant.INFO["surrounding"] = surrounding_context
 
-    sys.stdout.write(str(variant))
+    out['write_variant'](variant, snv_context, surrounding_context)
 
     if (line + 1) % 10000 == 0:
       logging.debug('processed %i lines...', line + 1)
     
-  logging.info('processing %s: filtered %i of %i. done', vcf, filtered, line)
+  logging.info('processing: filtered %i of %i. done', filtered, line)
+
+def maf_to_vcf(maf, chrom_col, pos_col, ref_col, alt_col):
+
+  def maf_reader(reader):
+    Variant = collections.namedtuple('Variant', 'CHROM POS REF ALT row')
+  
+    for line, row in enumerate(reader):
+      if line % 1000 == 0:
+        logging.debug('processed %i lines of %s...', line, maf)
+  
+  
+      chrom = row[chrom_col]
+      pos = int(row[pos_col])
+      ref = row[ref_col]
+      if ref == '-':
+        pos += 1 # fix for TCGA mafs
+      ref = ref.replace('-', '')
+      alt = row[alt_col]
+  
+      yield Variant(chrom, pos, ref, (alt,), row)
+
+  # enumeration a maf into a variant
+  reader = csv.DictReader(open(maf, 'r'), delimiter='\t')
+  return {'tsv_reader': reader, 'maf_reader': maf_reader(reader)}
+
+def maf_writer(out): # DictWriter
+
+  def write_header(vcf_in):
+    out.writeheader()
+
+  def write_variant(variant, snv_context, surrounding_context):
+    if snv_context is not None:
+      variant.row["snv_context"] = snv_context
+    if surrounding_context is not None:
+      variant.row["surrounding"] = surrounding_context
+    out.writerow(variant.row)
+
+  def dummy(d):
+    pass
+
+  return {'write_header': write_header, 'write_variant': write_variant, 'add_to_header': dummy}
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--sequence', required=False, default=0, type=int, help='surrounding sequence in each direction to annotate, 0 to skip')
   parser.add_argument('--vcf', required=True, help='vcf')
+  parser.add_argument('--is_maf', action='store_true', help='vcf is a maf')
+  parser.add_argument('--maf_chrom_column', required=False, default='Chromosome', help='maf chrom column name')
+  parser.add_argument('--maf_pos_column', required=False, default='Start_Position', help='maf pos column name')
+  parser.add_argument('--maf_ref_column', required=False, default='Reference_Allele', help='maf ref column name')
+  parser.add_argument('--maf_alt_column', required=False, default='Tumor_Seq_Allele2', help='maf alt column name')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
-  annotate(open(args.genome, 'r'), args.vcf, sys.stdout, sequence=args.sequence)
+
+  if args.is_maf:
+    vcf_in = maf_to_vcf(args.vcf, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column)
+    writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['snv_context', 'surrounding'])
+    vcf_out = maf_writer(writer)
+    annotate(open(args.genome, 'r'), vcf_in['maf_reader'], vcf_out, sequence=args.sequence)
+  else:
+    vcf_in = cyvcf2.VCF(args.vcf)
+    annotate(open(args.genome, 'r'), vcf_in, vcf_writer(sys.stdout), sequence=args.sequence)

@@ -10,6 +10,7 @@ import sys
 
 import numpy as np
 import scipy.optimize
+import scipy.special
 
 def make_distance(A, b, metric, with_composition=False):
   '''
@@ -29,6 +30,8 @@ def make_distance(A, b, metric, with_composition=False):
       return cosine(x)
     if metric == 'l1':
       return l1(x)
+    if metric == 'kl':
+      return kl(x)
     raise ValueError('Unknown metric {}'.format(metric))
 
   def euclidean(x):
@@ -40,6 +43,21 @@ def make_distance(A, b, metric, with_composition=False):
     # total error
     error = math.sqrt(sum(residual_term))
     return (error, residual_term)
+
+  def kl(x):
+    estimate = np.dot(A, x) # 96-dimension vector of estimated context probability based on exposures (x)
+    # b is the observed set of context probabilities based on observed variants
+
+    # p = posterior (first parameter)
+    # q = prior (second parameter)
+    bnorm = b / sum(b)
+    estimatenorm = estimate / sum(estimate)
+    #logging.debug('kl obs is %s, est is %s', bnorm, estimate)
+    kl_divergence = scipy.special.rel_entr(bnorm, estimatenorm)
+    #distance = abs(sum(kl_divergence))
+    distance = sum(kl_divergence) ** 2
+    # higher divergence is further away
+    return (distance, kl_divergence)
 
   def cosine(x):
     '''
@@ -193,14 +211,14 @@ def decompose(signatures_fh, counts_fh, out, metric, seed, evaluate, solver, max
         continue
       signature_index = signature_classes.index(signature)
       b[signature_index] = value # counts
-      total_count += int(value)
+      total_count += float(value)
       
       # untranscribed
       signature = '{}U'.format(fields[0])
       value = float(fields[4])
       signature_index = signature_classes.index(signature)
       b[signature_index] = value # counts
-      total_count += int(value)
+      total_count += float(value)
     else:
       if fields[0] not in signature_classes:
         logging.debug('context %s not in signature definitions', fields[0])
@@ -208,10 +226,10 @@ def decompose(signatures_fh, counts_fh, out, metric, seed, evaluate, solver, max
       signature_index = signature_classes.index(fields[0])
       b[signature_index] = float(fields[header.index(counts_column)]) # counts
       #b[signature_index] = float(fields[2]) # percentage
-      total_count += int(fields[header.index(counts_column)])
+      total_count += float(fields[header.index(counts_column)])
 
     # check for excluded signatures
-    if int(fields[1]) == 0:
+    if float(fields[1]) == 0:
       if len(exclude_map[fields[0]]) > 0:
         logging.debug('excluding %s because %s is not present and has proportion >%.2f', ' '.join([names[x] for x in exclude_map[fields[0]]]), fields[0], context_cutoff)
       [excluded_signatures.add(x) for x in exclude_map[fields[0]]]
@@ -279,24 +297,26 @@ def decompose(signatures_fh, counts_fh, out, metric, seed, evaluate, solver, max
     out.write('Mutations\t{}\n'.format(total_count))
 
   # compare reconstruction
-  for m in ('euclidean', 'cosine', 'l1'):
+  for m in ('euclidean', 'cosine', 'l1', 'kl'):
     if sum(b) == 0:
       error = (0.0, None)
     else:
       error = make_distance(A, b, m, with_composition=True)(result)
     logging.info('%s error:\t%.5f', m, error[0])
-    if metric == m:
-      if metric == 'cosine':
-        total_error = 1.0 + error[0]
-      else:
-        total_error = error[0]
-      if out is not None:
+
+    if m == 'cosine':
+      total_error = 1.0 + error[0]
+    else:
+      total_error = error[0]
+    if out is not None:
+      if metric == m:
         out.write('Error\t{:.3f}\n'.format(total_error))
         if error_contribution:
           for context_name, error_contribution, difference in zip(signature_classes, error[1], context_difference(A, b, result)):
             # context \t error % \t number of mutations
             out.write('Error {}\t{:.3f}\t{:.1f}\n'.format(context_name, error_contribution, difference))
-      target_error = (total_error, error[1])
+      out.write('Error_{}\t{:.3f}\n'.format(m, total_error))
+    target_error = (total_error, error[1])
 
   return {'signature_names': all_names, 'signature_values': all_result, 'total': total, 'error': target_error, 'total_included': total_count}
 
@@ -304,7 +324,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature finder')
   parser.add_argument('--signatures', required=True, help='mutational signatures e.g. cosmic')
   parser.add_argument('--counts', required=True, help='counts file')
-  parser.add_argument('--metric', required=False, default='cosine', help='metric. cosine, euclidean, or l1') # todo: add hellinger
+  parser.add_argument('--metric', required=False, default='cosine', help='metric: cosine, euclidean, kl or l1') # kl=kullback-leibler todo: add hellinger
   parser.add_argument('--solver', required=False, default='basin', help='solver. basin, grid')
   parser.add_argument('--max_sigs', required=False, type=int, help='maximum number of sigs to use')
   parser.add_argument('--context_cutoff', required=False, type=float, default=1e6, help='exclude signatures with contexts above this percent that are not represented in the sample') # deconstructSigs = 0.2
