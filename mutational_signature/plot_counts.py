@@ -20,7 +20,7 @@ HEIGHT=6
 
 rcParams['figure.figsize'] = WIDTH, HEIGHT
 
-def plot(counts, target, style='sbs', name=None):
+def plot(counts, target, style='sbs', name=None, dpi=72):
   logging.info('reading from stdin...')
   first = True
   vals = {}
@@ -45,16 +45,16 @@ def plot(counts, target, style='sbs', name=None):
 
   sys.stderr.write('{} contexts\n'.format(len(vals)))
   if style == 'sbs':
-    plot_signature(vals, target, name)
+    plot_signature(vals, target, name, dpi)
   elif style == 'id':
-    plot_signature_ids(vals, target, name)
+    plot_signature_ids(vals, target, name, dpi)
   else:
     logging.warn('unrecognised plot type %s', style)
 
-def plot_signature(vals, target, name=None, fontsize=14, figure_width=6, figure_height=2):
+def plot_signature(vals, target, name=None, fontsize=14, figure_width=6, figure_height=2, dpi=72):
   #xs = sorted(vals.keys())
   xs = sorted(['{}>{} {}{}{}'.format(k[1], k[2], k[0], k[1], k[3]) for k in ['ACAA', 'ACAC', 'ACAG', 'ACAT', 'ACGA', 'ACGC', 'ACGG', 'ACGT', 'ACTA', 'ACTC', 'ACTG', 'ACTT', 'ATAA', 'ATAC', 'ATAG', 'ATAT', 'ATCA', 'ATCC', 'ATCG', 'ATCT', 'ATGA', 'ATGC', 'ATGG', 'ATGT', 'CCAA', 'CCAC', 'CCAG', 'CCAT', 'CCGA', 'CCGC', 'CCGG', 'CCGT', 'CCTA', 'CCTC', 'CCTG', 'CCTT', 'CTAA', 'CTAC', 'CTAG', 'CTAT', 'CTCA', 'CTCC', 'CTCG', 'CTCT', 'CTGA', 'CTGC', 'CTGG', 'CTGT', 'GCAA', 'GCAC', 'GCAG', 'GCAT', 'GCGA', 'GCGC', 'GCGG', 'GCGT', 'GCTA', 'GCTC', 'GCTG', 'GCTT', 'GTAA', 'GTAC', 'GTAG', 'GTAT', 'GTCA', 'GTCC', 'GTCG', 'GTCT', 'GTGA', 'GTGC', 'GTGG', 'GTGT', 'TCAA', 'TCAC', 'TCAG', 'TCAT', 'TCGA', 'TCGC', 'TCGG', 'TCGT', 'TCTA', 'TCTC', 'TCTG', 'TCTT', 'TTAA', 'TTAC', 'TTAG', 'TTAT', 'TTCA', 'TTCC', 'TTCG', 'TTCT', 'TTGA', 'TTGC', 'TTGG', 'TTGT']])
-  ys = list([vals.get(x, 0) for x in xs])
+  ys = list([100 * vals.get(x, 0) for x in xs]) # convert to %
 
   color = ((0.2,0.7,0.9),)*16 + ((0.1,0.1,0.1),)*16 + ((0.8,0.2,0.2),)*16 + ((0.8,0.8,0.8),)*16 + ((0.6,0.8,0.4),)*16 + ((0.9,0.8,0.7),)*16
   color = list(color)
@@ -74,7 +74,7 @@ def plot_signature(vals, target, name=None, fontsize=14, figure_width=6, figure_
   ax2 = ax.twiny()
   ax2.set_xlim(ax.get_xlim())
   ax2.set_xticks([ width * (x/6.0 + 1/12.0) for x in range(6) ])
-  ax2.set_xticklabels(['C>A', 'C>G', 'C>T', 'T>A', 'T>C', 'T>G'])
+  ax2.set_xticklabels(['C>A', 'C>G', 'C>T', 'T>A', 'T>C', 'T>G'], fontsize=fontsize)
 
   for x in range(1, 6):
     ax.axvline(x=x * 16 - 0.5, color='#e0e0e0')
@@ -82,12 +82,15 @@ def plot_signature(vals, target, name=None, fontsize=14, figure_width=6, figure_
   if name is not None:
     plt.annotate(name, xy=(0.01, 1-fontsize * 0.003), xycoords='axes fraction', fontsize=fontsize)
 
+  ax.set_ylabel('Mutation probability (%)', fontsize=fontsize)
+  ax.set_xlabel('Mutational Context', fontsize=fontsize)
+
   #plt.figure(figsize=(figure_width, figure_height))
-  plt.savefig(target, bbox_inches='tight')
+  plt.savefig(target, bbox_inches='tight', dpi=dpi)
   plt.close()
 
 
-def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, figure_height=2):
+def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, figure_height=2, dpi=72):
   xs = sorted(vals.keys())
 
   contexts = ('DEL_C_1_0', 'DEL_C_1_1', 'DEL_C_1_2', 'DEL_C_1_3', 'DEL_C_1_4', 'DEL_C_1_5+', 
@@ -169,7 +172,7 @@ def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, fig
   if name is not None:
     plt.annotate(name, xy=(0.01, 1-fontsize * 0.003), xycoords='axes fraction', fontsize=fontsize)
   #plt.figure(figsize=(figure_width, figure_height))
-  plt.savefig(target, bbox_inches='tight')
+  plt.savefig(target, bbox_inches='tight', dpi=dpi)
   plt.close()
  
 if __name__ == '__main__':
@@ -178,11 +181,12 @@ if __name__ == '__main__':
   parser.add_argument('--type', required=False, default='sbs', help='sbs or id')
   parser.add_argument('--name', required=False, help='name of plot')
   parser.add_argument('--target', required=False, default='plot.png', help='output filename')
+  parser.add_argument('--dpi', required=False, default=72, type=int, help='dpi')
   args = parser.parse_args()
   if args.verbose:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(sys.stdin, args.target, args.type, args.name)
+  plot(sys.stdin, args.target, args.type, args.name, args.dpi)
 

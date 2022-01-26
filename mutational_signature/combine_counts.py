@@ -4,51 +4,43 @@
 '''
 
 import argparse
+import csv
 import logging
 import sys
 
-def main(files):
+def main(files, use_probability):
   logging.info('starting...')
 
   rows = {}
   seen = set()
-  for file in files:
-    logging.info('reading %s...', file)
-    keys = {}
-    first = True
-    for line in open(file, 'r'):
-      if first:
-        first = False
-        continue
+  for fn in files:
+    logging.debug('reading %s...', fn)
+    keys = {'Sample': fn.split('/')[-1]}
+    for row in csv.DictReader(open(fn, 'rt'), delimiter='\t'):
       # variation count prob
-      key, count, probability = line.strip('\n').split('\t')
-      #keys[key] = probability
-      keys[key] = count
-      seen.add(key)
+      if use_probability:
+        keys[row['Variation']] = row['Probability']
+      else:
+        keys[row['Variation']] = row['Count']
+      seen.add(row['Variation'])
     # generate result
-    rows[file] = keys
+    rows[fn] = keys
 
   sys.stdout.write('Sample\t{}\n'.format('\t'.join(sorted(seen))))
+
+  ofh = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=['Sample'] + sorted(seen))
+  ofh.writeheader()
   
   logging.info('writing...')
-  for file in files:
-    logging.info('writing %s...', file)
-    result = [file.split('/')[-1]]
-    
-    for key in sorted(seen):
-      if key in rows[file]:
-        result.append(rows[file][key])
-      else:
-        logging.debug('%s not observed in %s', key, file)
-        result.append('0')
-
-    sys.stdout.write('{}\n'.format('\t'.join(result)))
-
+  for fn in files:
+    logging.debug('writing %s...', fn)
+    ofh.writerow(rows[fn])
   logging.info('done')
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Combine signatures')
   parser.add_argument('--files', required=True, nargs='+', help='count files')
+  parser.add_argument('--use_probability', action='store_true', help='probability instead of count')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -56,4 +48,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  main(args.files)
+  main(args.files, args.use_probability)
