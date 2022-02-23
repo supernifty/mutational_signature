@@ -6,4 +6,4 @@ matplotlib
 numpy
 scipy
 sklearn
-https://github.com/supernifty/plotme
+git+https://github.com/supernifty/plotme
