@@ -83,7 +83,7 @@ DBS11	APOBEC?	CC>TT
 ID1	MMRd tendency	INS_T_1_5+
 ID2	MMRd tendency	DEL_T_1_5+
 ID3	Tobacco smoking	DEL_C_1_1
-ID4	?	DEL_repeats_2_1
+ID4	TOP1 transcription-associated mutagenesis (doi:10.1038/s41586-022-04403-y)	DEL_repeats_2_1
 ID5	Age	DEL_T_1_2
 ID6	Defective HR (BRCA)	DEL_MH_5+_2
 ID7	MMRd	DEL_C_1_5+
