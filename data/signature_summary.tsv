@@ -20,7 +20,7 @@ SBS12	?	TTA>TCA
 SBS13	AID/APOBEC	TCT>TGT
 SBS14	Concurrent POLE and MMRd	CCT>CAT
 SBS15	MMRd	GCG>GTG
-SBS16	? (alcohol/tobacco/male in Liver doi:10.1038/s41467-017-01358-x)	ATA>ACA
+SBS16	? (alcohol/tobacco/male in Liver doi:10.1038/s41467-017-01358-x; ESCC alcohol 10.1038/s41588-021-00928-6)	ATA>ACA
 SBS17a	?	CTT>CCT
 SBS17b	? (5-FU treatment doi.org/10.1038/s41467-019-12594-8)	CTT>CGT
 SBS18	Reactive oxygen species	TCT>TAT
@@ -90,7 +90,7 @@ ID7	MMRd	DEL_C_1_5+
 ID8	?	DEL_MH_5+_1
 ID9	?	DEL_C_1_0
 ID10	?	INS_repeats_5+_1
-ID11	? Radiation treatment (doi:10.1038/s41588-019-0525-5)	INS_T_1_1
+ID11	? Radiation treatment (doi:10.1038/s41588-019-0525-5), alcohol ESCC (10.1038/s41588-021-00928-6)	INS_T_1_1
 ID12	?	DEL_repeats_2_5+
 ID13	UV	DEL_T_1_1
 ID14	?	INS_C_1_0
