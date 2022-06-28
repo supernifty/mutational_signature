@@ -13,6 +13,7 @@ import argparse
 import collections
 import csv
 import logging
+import random
 import sys
 
 import matplotlib
@@ -27,6 +28,11 @@ DPI=300
 import cyvcf2
 
 colors = {"SBS1": "#de3860", "SBS2": "#41ac2f", "SBS3": "#7951d0", "SBS4": "#73d053", "SBS5": "#b969e9", "SBS6": "#91ba2c", "SBS7a": "#b4b42f", "SBS7b": "#5276ec", "SBS7c": "#daae36", "SBS7d": "#9e40b5", "SBS8": "#43c673", "SBS9": "#dd4cb0", "SBS10a": "#3d9332", "SBS10b": "#de77dd", "SBS11": "#7bad47", "SBS12": "#9479e8", "SBS13": "#487b21", "SBS14": "#a83292", "SBS15": "#83c67d", "SBS16": "#664db1", "SBS17a": "#e18d28", "SBS17b": "#588de5", "SBS18": "#e2672a", "SBS19": "#34c7dd", "SBS20": "#cf402b", "SBS21": "#5acdaf", "SBS22": "#d74587", "SBS23": "#428647", "SBS24": "#7b51a7", "SBS25": "#b4ba64", "SBS26": "#646cc1", "SBS27": "#a27f1f", "SBS28": "#3b63ac", "SBS29": "#dca653", "SBS30": "#505099", "SBS31": "#7d8529", "SBS32": "#bf8ade", "SBS33": "#516615", "SBS34": "#b65da7", "SBS35": "#57a87a", "SBS36": "#c84249", "SBS37": "#37b5b1", "SBS38": "#a14622", "SBS39": "#58b5e1", "SBS40": "#ba6e2f", "SBS41": "#589ed8", "SBS42": "#e98261", "SBS43": "#3176ae", "SBS44": "#656413", "SBS45": "#a19fe2", "SBS46": "#756121", "SBS47": "#7e4a8d", "SBS48": "#326a38", "SBS49": "#dd8abf", "SBS50": "#1a6447", "SBS51": "#e78492", "SBS52": "#30876c", "SBS53": "#9d4d7c", "SBS54": "#919d5b", "SBS55": "#9d70ac", "SBS56": "#5b6f34", "SBS57": "#65659c", "SBS58": "#c9a865", "SBS59": "#a1455d", "SBS60": "#5e622c", "SBS84": "#b66057", "SBS85": "#dca173", "DBS1": "#855524", "DBS2": "#9f7846", "DBS3": "#7951d0", "DBS4": "#73d053", "DBS5": "#b969e9", "DBS6": "#91ba2c", "DBS7": "#3656ca", "DBS8": "#b4b42f", "DBS9": "#5276ec", "DBS10": "#daae36", "DBS11": "#9e40b5", "ID1": "#de3860", "ID2": "#41ac2f", "ID3": "#7951d0", "ID4": "#73d053", "ID5": "#b969e9", "ID6": "#91ba2c", "ID7": "#9e40b5", "ID8": "#43c673", "ID9": "#dd4cb0", "ID10": "#3d9332", "ID11": "#de77dd", "ID12": "#7bad47", "ID13": "#9479e8", "ID14": "#487b21", "ID15": "#a83292", "ID16": "#83c67d", "ID17": "#664db1", "1": "#de3860", "2": "#41ac2f", "3": "#7951d0", "4": "#73d053", "5": "#b969e9", "6": "#91ba2c", "7": "#b4b42f", "8": "#43c673", "9": "#dd4cb0", "10": "#3d9332", "11": "#7bad47", "12": "#9479e8", "13": "#487b21", "14": "#a83292", "15": "#83c67d", "16": "#664db1", "17": "#e18d28", "18": "#e2672a", "19": "#34c7dd", "20": "#cf402b", "21": "#5acdaf", "22": "#d74587", "23": "#428647", "24": "#7b51a7", "25": "#b4ba64", "26": "#646cc1", "27": "#a27f1f", "28": "#3b63ac", "29": "#dca653", "30": "#505099"}
+
+H = '0123456789ABCDEF'
+
+def random_color():
+  return '#' + ''.join([H[random.randint(0, 15)] for _ in range(6)])
 
 def plot_sbs_signature(vals, target, contexts, sigs):
   '''
@@ -66,6 +72,8 @@ def plot_sbs_signature(vals, target, contexts, sigs):
           if item[1] == sig:
             new_ys.append(item[0] * ys[context_idx])
             break
+      if sig not in colors:
+        colors[sig] = random_color()
       bars = ax.bar(x, new_ys, label=sig, bottom=bottom, color=colors[sig])
       bottom = [x + y for x,y in zip(bottom, new_ys)]
       for h in range(len(x)):

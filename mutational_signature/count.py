@@ -25,6 +25,7 @@ INDEL_COMP = {'A': 'T', 'C': 'C', 'G': 'C', 'T': 'T'} # normalize to C or T
 EXCLUDE_UTR=True # transcription bias
 SKIP_ALT_CHROM=True
 SKIP_M=True
+SKIP_M=False
 
 def normalize_sbs(v, strand_tx, strand_exon):
   '''
@@ -533,5 +534,5 @@ if __name__ == '__main__':
     logging.info('processing %i of %i: %s -> %s...', idx, len(args.vcf), v, out_fn)
     result = count(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=out, chroms=chroms, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, transcripts_fn=args.transcripts, mer=args.mer)
     chroms = result['chroms']
-    logging.debug('chroms is %s', chroms.keys())
+    logging.info('chroms is %s', chroms.keys())
     logging.info('processing %i of %i: %s -> %s: done', idx, len(args.vcf), v, out_fn)

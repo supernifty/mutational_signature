@@ -198,6 +198,9 @@ def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, d
           contexts_fh.write('{}\t{}\t{}\t{}\n'.format(chrom, pos, chroms[chrom][pos], doublet))
         logging.debug('doublet found at %s:%s: %s', variant.CHROM, variant.POS, doublet)
 
+def count_bulk(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False, context_length=1, write_contexts=None, contexts_of_interest=None):
+  pass
+
 def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False, context_length=1, write_contexts=None, contexts_of_interest=None):
   logging.info('processing %s...', bed)
 

@@ -6,6 +6,8 @@
 import argparse
 import collections
 import logging
+import math
+import random
 import sys
 
 import numpy as np
@@ -18,6 +20,23 @@ def cosine(x, y):
 def pearson(x, y):
   similarity =  scipy.stats.pearsonr(x, y) # returns correlation, p-value
   return similarity[0]
+
+def cosine_pvalue(x, y):
+  '''
+    based on https://stats.stackexchange.com/questions/330540/how-to-interpret-very-low-similarity-score-of-two-vectors-but-having-significant
+  '''
+  lx, sr = len(x), []
+  similarity = lambda x1, x2: sum(xj*xk for xj,xk in zip(x1, x2))/math.sqrt(sum(xj**2 for xj in x1)*sum(xk**2 for xk in x2))
+  xl = list(x)
+  yl = list(y)
+  s = similarity(xl, yl)
+  for j in range(10000):
+    mj = random.sample(xl, lx)
+    sr.append(similarity(mj, yl))
+  shape, loc, scale = scipy.stats.weibull_min.fit(sr)
+  ej = ((s-loc)/scale)**shape*math.log10(math.exp(1.))
+  p = 10**(-ej)
+  return p
 
 def compare(signatures, signatures2, measure, out, no_convert):
   logging.info('processing %s...', signatures)
@@ -80,12 +99,15 @@ def compare(signatures, signatures2, measure, out, no_convert):
   # pairwise distance
   similarities = np.zeros((len(names1),len(names2)), dtype=float)
   for aid, arow in enumerate(rows1):
+    logging.info('row %i...', aid)
     for bid, brow in enumerate(rows2):
       logging.debug('%s vs %s: %i vs %i len', aid, bid, len(arow), len(brow))
       if measure == 'pearson':
         similarity = pearson(arow, brow)
       elif measure == 'cosine':
         similarity = cosine(arow, brow)
+      elif measure == 'pvalue':
+        similarity = cosine_pvalue(arow, brow)
       else:
         logging.warn('unrecognised measure %s', measure)
         similarity = cosine(arow, brow)
@@ -96,13 +118,13 @@ def compare(signatures, signatures2, measure, out, no_convert):
   for row, name in enumerate(names1):
     best = np.argsort(similarities[row])[::-1]
     similar = '{} ({:.2f}) {} {}'.format(names2[best[0]], similarities[row][best[0]], names2[best[1]], names2[best[2]])
-    sys.stdout.write('{}\t{}\t{}\n'.format(name, '\t'.join(['{:.4f}'.format(x) for x in similarities[row]]), similar))
+    sys.stdout.write('{}\t{}\t{}\n'.format(name, '\t'.join(['{:.6f}'.format(x) for x in similarities[row]]), similar))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='compare signatures')
   parser.add_argument('--signatures', required=True, help='signatures')
   parser.add_argument('--signatures2', required=False, help='second group of signatures')
-  parser.add_argument('--measure', required=False, default='cosine', help='cosine or pearson')
+  parser.add_argument('--measure', required=False, default='cosine', help='cosine or pearson or pvalue')
   parser.add_argument('--no_convert', action='store_true', help='do not try to convert column names')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
