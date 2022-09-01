@@ -10,10 +10,10 @@ import sys
 
 import mutational_signature.plot_counts
 
-def main(prefix, category, sig_col, fontsize, dpi):
+def main(prefix, category, sig_col, fontsize, dpi, suffix):
   logging.info('reading from stdin...')
   for row in csv.DictReader(sys.stdin, delimiter='\t'):
-    output = '{}{}.png'.format(prefix, row[sig_col])
+    output = '{}{}.{}'.format(prefix, row[sig_col], suffix)
     logging.info('plotting %s...', output)
     if category == 'sbs':
       # ACAA -> C>A ACA
@@ -31,6 +31,7 @@ def main(prefix, category, sig_col, fontsize, dpi):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Plot signature contexts')
   parser.add_argument('--prefix', required=False, default='', help='prefix output files')
+  parser.add_argument('--suffix', required=False, default='png', help='image type')
   parser.add_argument('--category', required=False, default='sbs', help='sbs or ids')
   parser.add_argument('--sig_col', required=False, default='Sig', help='name of signature column')
   parser.add_argument('--fontsize', required=False, default=14, type=int, help='signature name fontsize')
@@ -42,4 +43,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  main(args.prefix, args.category, args.sig_col, args.fontsize, args.dpi)
+  main(args.prefix, args.category, args.sig_col, args.fontsize, args.dpi, args.suffix)

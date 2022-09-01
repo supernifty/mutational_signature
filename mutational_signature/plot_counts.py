@@ -45,13 +45,13 @@ def plot(counts, target, style='sbs', name=None, dpi=72):
 
   sys.stderr.write('{} contexts\n'.format(len(vals)))
   if style == 'sbs':
-    plot_signature(vals, target, name, dpi)
+    plot_signature(vals, target, name=name, dpi=dpi)
   elif style == 'id':
-    plot_signature_ids(vals, target, name, dpi)
+    plot_signature_ids(vals, target, name=name, dpi=dpi)
   else:
     logging.warn('unrecognised plot type %s', style)
 
-def plot_signature(vals, target, name=None, fontsize=14, figure_width=6, figure_height=2, dpi=72):
+def plot_signature(vals, target, name=None, fontsize=14, figure_width=10, figure_height=4, dpi=72):
   #xs = sorted(vals.keys())
   xs = sorted(['{}>{} {}{}{}'.format(k[1], k[2], k[0], k[1], k[3]) for k in ['ACAA', 'ACAC', 'ACAG', 'ACAT', 'ACGA', 'ACGC', 'ACGG', 'ACGT', 'ACTA', 'ACTC', 'ACTG', 'ACTT', 'ATAA', 'ATAC', 'ATAG', 'ATAT', 'ATCA', 'ATCC', 'ATCG', 'ATCT', 'ATGA', 'ATGC', 'ATGG', 'ATGT', 'CCAA', 'CCAC', 'CCAG', 'CCAT', 'CCGA', 'CCGC', 'CCGG', 'CCGT', 'CCTA', 'CCTC', 'CCTG', 'CCTT', 'CTAA', 'CTAC', 'CTAG', 'CTAT', 'CTCA', 'CTCC', 'CTCG', 'CTCT', 'CTGA', 'CTGC', 'CTGG', 'CTGT', 'GCAA', 'GCAC', 'GCAG', 'GCAT', 'GCGA', 'GCGC', 'GCGG', 'GCGT', 'GCTA', 'GCTC', 'GCTG', 'GCTT', 'GTAA', 'GTAC', 'GTAG', 'GTAT', 'GTCA', 'GTCC', 'GTCG', 'GTCT', 'GTGA', 'GTGC', 'GTGG', 'GTGT', 'TCAA', 'TCAC', 'TCAG', 'TCAT', 'TCGA', 'TCGC', 'TCGG', 'TCGT', 'TCTA', 'TCTC', 'TCTG', 'TCTT', 'TTAA', 'TTAC', 'TTAG', 'TTAT', 'TTCA', 'TTCC', 'TTCG', 'TTCT', 'TTGA', 'TTGC', 'TTGG', 'TTGT']])
   ys = list([100 * vals.get(x, 0) for x in xs]) # convert to %
