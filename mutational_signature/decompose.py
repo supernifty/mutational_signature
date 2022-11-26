@@ -145,7 +145,7 @@ def basin_hopping_solver(A, b, metric, max_sigs):
   return result
 
 
-def decompose(signatures_fh, counts_fh, out, metric, seed, evaluate, solver, max_sigs, context_cutoff, error_contribution=False, strand=False, counts_column='Count'):
+def decompose(signatures_fh, counts_fh, out, metric='cosine', seed=None, evaluate=None, solver='basin', max_sigs=None, context_cutoff=1e6, error_contribution=False, strand=False, counts_column='Count'):
   logging.debug('starting...')
 
   if seed is not None:
