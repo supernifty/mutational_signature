@@ -20,8 +20,7 @@ HEIGHT=6
 
 rcParams['figure.figsize'] = WIDTH, HEIGHT
 
-def plot(counts, target, style='sbs', name=None, title=None, figure_width=9, figure_height=3, dpi=72):
-  rcParams['figure.figsize'] = figure_width, figure_height
+def plot(counts, target, style='sbs', name=None, dpi=72, title=None, normalize=False, fontsize=14, width=6, height=2, title_fontsize=14):
   logging.info('reading from stdin...')
   first = True
   vals = {}
@@ -40,20 +39,28 @@ def plot(counts, target, style='sbs', name=None, title=None, figure_width=9, fig
         variation = '{}>{} {}'.format(v[1], v[4], v[0:3])
         vals[variation] = float(probability)
       else:
-        logging.info('skipped {}\n'.format(v))
+        logging.debug('skipped {}\n'.format(v))
+    elif style == 'id':
+      if len(v) == 5 and v[3] == '>' or len(v) == 5 and v[2] == '>':
+        logging.debug('skipped {}\n'.format(v))
+      else:
+        vals[v] = float(probability)
     else:
       vals[v] = float(probability)
 
+  if normalize:
+    normed = {k: vals[k] / sum([vals[x] for x in vals]) for k in vals}
+    vals = normed
+
   sys.stderr.write('{} contexts\n'.format(len(vals)))
   if style == 'sbs':
-    plot_signature(vals, target, name=name, title=title, figure_width=figure_width, figure_height=figure_height, dpi=dpi)
+    plot_signature(vals, target, name=name, dpi=dpi, title=title, fontsize=fontsize, figure_width=width, figure_height=height, title_fontsize=title_fontsize)
   elif style == 'id':
-    plot_signature_ids(vals, target, name=name, title=title, dpi=dpi)
+    plot_signature_ids(vals, target, name=name, dpi=dpi, title=title, fontsize=fontsize, figure_width=width, figure_height=height, title_fontsize=title_fontsize)
   else:
     logging.warn('unrecognised plot type %s', style)
 
-def plot_signature(vals, target, name=None, title=None, fontsize=14, figure_width=9, figure_height=3, dpi=72):
-  rcParams['figure.figsize'] = figure_width, figure_height
+def plot_signature(vals, target, name=None, fontsize=14, figure_width=10, figure_height=4, dpi=72, title=None, title_fontsize=14):
   #xs = sorted(vals.keys())
   xs = sorted(['{}>{} {}{}{}'.format(k[1], k[2], k[0], k[1], k[3]) for k in ['ACAA', 'ACAC', 'ACAG', 'ACAT', 'ACGA', 'ACGC', 'ACGG', 'ACGT', 'ACTA', 'ACTC', 'ACTG', 'ACTT', 'ATAA', 'ATAC', 'ATAG', 'ATAT', 'ATCA', 'ATCC', 'ATCG', 'ATCT', 'ATGA', 'ATGC', 'ATGG', 'ATGT', 'CCAA', 'CCAC', 'CCAG', 'CCAT', 'CCGA', 'CCGC', 'CCGG', 'CCGT', 'CCTA', 'CCTC', 'CCTG', 'CCTT', 'CTAA', 'CTAC', 'CTAG', 'CTAT', 'CTCA', 'CTCC', 'CTCG', 'CTCT', 'CTGA', 'CTGC', 'CTGG', 'CTGT', 'GCAA', 'GCAC', 'GCAG', 'GCAT', 'GCGA', 'GCGC', 'GCGG', 'GCGT', 'GCTA', 'GCTC', 'GCTG', 'GCTT', 'GTAA', 'GTAC', 'GTAG', 'GTAT', 'GTCA', 'GTCC', 'GTCG', 'GTCT', 'GTGA', 'GTGC', 'GTGG', 'GTGT', 'TCAA', 'TCAC', 'TCAG', 'TCAT', 'TCGA', 'TCGC', 'TCGG', 'TCGT', 'TCTA', 'TCTC', 'TCTG', 'TCTT', 'TTAA', 'TTAC', 'TTAG', 'TTAT', 'TTCA', 'TTCC', 'TTCG', 'TTCT', 'TTGA', 'TTGC', 'TTGG', 'TTGT']])
   ys = list([100 * vals.get(x, 0) for x in xs]) # convert to %
@@ -64,14 +71,15 @@ def plot_signature(vals, target, name=None, title=None, fontsize=14, figure_widt
   ylim = max(ys)
   width = len(xs)
   x = range(width)
-  f,ax = plt.subplots(1)
+  f,ax = plt.subplots(1, figsize=(figure_width, figure_height))
   bars = ax.bar(x, ys)
   for h in range(len(x)):
     bars[h].set_color(color[h])
   ax.set_xticks(x)
-  ax.set_xticklabels([x.split(' ')[1] for x in xs], minor=False, rotation=90)
+  ax.set_xticklabels([x.split(' ')[1] for x in xs], minor=False, rotation=90, fontsize=fontsize)
   plt.ylim(0, ylim)
   plt.xlim(-0.5, width)
+  ax.tick_params(axis='y', which='major', labelsize=fontsize)
 
   ax2 = ax.twiny()
   ax2.set_xlim(ax.get_xlim())
@@ -82,20 +90,18 @@ def plot_signature(vals, target, name=None, title=None, fontsize=14, figure_widt
     ax.axvline(x=x * 16 - 0.5, color='#e0e0e0')
 
   if name is not None:
-    plt.annotate(name, xy=(0.01, 1-fontsize * 0.003), xycoords='axes fraction', fontsize=fontsize)
-
-  if title is not None:
-    ax.set_title(title, fontsize=fontsize)
+    plt.annotate(name, xy=(0.01, 1-title_fontsize * 0.01), xycoords='axes fraction', fontsize=title_fontsize)
 
   ax.set_ylabel('Mutation probability (%)', fontsize=fontsize)
   ax.set_xlabel('Mutational Context', fontsize=fontsize)
 
-  #plt.figure(figsize=(figure_width, figure_height))
+  if title is not None:
+    ax.set_title(title, fontsize=title_fontsize)
+
   plt.savefig(target, bbox_inches='tight', dpi=dpi)
   plt.close()
 
-
-def plot_signature_ids(vals, target, name=None, title=None, fontsize=14, figure_width=6, figure_height=2, dpi=72):
+def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, figure_height=2, dpi=72, title=None, title_fontsize=14):
   xs = sorted(vals.keys())
 
   contexts = ('DEL_C_1_0', 'DEL_C_1_1', 'DEL_C_1_2', 'DEL_C_1_3', 'DEL_C_1_4', 'DEL_C_1_5+', 
@@ -129,7 +135,7 @@ def plot_signature_ids(vals, target, name=None, title=None, fontsize=14, figure_
   ylim = max(ys)
   width = len(contexts) # 84
   x = range(width)
-  fig, ax = plt.subplots(1)
+  fig, ax = plt.subplots(1, figsize=(figure_width, figure_height))
   fig.subplots_adjust(bottom=0.10, top=0.85)
 
   bars = ax.bar(x, [vals[x] for x in contexts])
@@ -138,7 +144,8 @@ def plot_signature_ids(vals, target, name=None, title=None, fontsize=14, figure_
 
   # bottom axes takes display list
   ax.set_xticks(x)
-  ax.set_xticklabels([x for x in display], minor=False, rotation=90)
+  ax.set_xticklabels([x for x in display], minor=False, rotation=90, fontsize=fontsize)
+  ax.tick_params(axis='y', which='major', labelsize=fontsize)
   plt.ylim(0, ylim)
   plt.xlim(-0.5, width)
 
@@ -149,7 +156,7 @@ def plot_signature_ids(vals, target, name=None, title=None, fontsize=14, figure_
   ax2.tick_params(axis='both', which='both', length=0)
   ax2.set_xlim(ax.get_xlim())
   ax2.set_xticks([ width * (0/84 + 6/84), width * (12/84 + 6/84), width * (24/84 + 12/84), width * (48/84 + 12/84), width * (72/84 + 6/84)])
-  ax2.set_xticklabels(['1bp deletion', '1bp insertion', '>1bp deletion at repeat\n(deletion length)', '>1bp insertion at repeat\n(insertion length)', 'Deletion with microhomology\n(deletion length)'])
+  ax2.set_xticklabels(['1bp deletion', '1bp insertion', '>1bp deletion at repeat\n(deletion length)', '>1bp insertion at repeat\n(insertion length)', 'Deletion with microhomology\n(deletion length)'], fontsize=fontsize)
 
   # bottom axes
   ax3 = ax.twiny()
@@ -159,7 +166,7 @@ def plot_signature_ids(vals, target, name=None, title=None, fontsize=14, figure_
   ax3.spines['bottom'].set_visible(False)
   ax3.tick_params(axis='both', which='both', length=0)
   ax3.set_xticks([ width * (0/84 + 6/84), width * (12/84 + 6/84), width * (24/84 + 12/84), width * (48/84 + 12/84), width * (72/84 + 6/84)])
-  ax3.set_xticklabels(['Homopolymer length', 'Homopolymer length', 'Number of repeat units', 'Number of repeat units', 'Microhomology length'])
+  ax3.set_xticklabels(['Homopolymer length', 'Homopolymer length', 'Number of repeat units', 'Number of repeat units', 'Microhomology length'], fontsize=fontsize)
 
   # additional help
   squiggem = 0.01 * ylim
@@ -170,33 +177,36 @@ def plot_signature_ids(vals, target, name=None, title=None, fontsize=14, figure_
     ('2', 72.5, '#E8E8EE', 1), ('3', 74, '#C2C3DE', 2), ('4', 76.5, '#5AAAD3', 3), ('5+', 80.5, '#7758A8', 5))
   for i, patch in enumerate(patches):
     ax.add_patch(matplotlib.patches.Rectangle(xy=(patch[1] - patch[3]/2 - 0.5, ylim + squiggem), width=patch[3], height=ylim/20, color=patch[2], clip_on=False))
-    ax.text(s=patch[0], x=patch[1] - 0.75, y=ylim + 2 * squiggem, fontsize=10, ha="left", color='black')
+    ax.text(s=patch[0], x=patch[1] - 0.75, y=ylim + 2 * squiggem, fontsize=fontsize, ha="left", color='black')
     if i < len(patches) - 1:
       ax.axvline(x=patch[1] + patch[3]/2 - 0.5, color='#e0e0e0')
-
-  if name is not None:
-    plt.annotate(name, xy=(0.01, 1-fontsize * 0.003), xycoords='axes fraction', fontsize=fontsize)
 
   if title is not None:
     ax.set_title(title)
 
-  #plt.figure(figsize=(figure_width, figure_height))
+  if name is not None:
+    plt.annotate(name, xy=(0.01, 1-title_fontsize * 0.01), xycoords='axes fraction', fontsize=title_fontsize)
   plt.savefig(target, bbox_inches='tight', dpi=dpi)
   plt.close()
  
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Plot contexts')
   parser.add_argument('--verbose', action='store_true', help='more logging')
+  parser.add_argument('--normalize', action='store_true', help='normalize counts')
   parser.add_argument('--type', required=False, default='sbs', help='sbs or id')
   parser.add_argument('--name', required=False, help='name of plot')
-  parser.add_argument('--title', required=False, help='title of plot')
+  parser.add_argument('--title', required=False, help='name of plot')
   parser.add_argument('--target', required=False, default='plot.png', help='output filename')
   parser.add_argument('--dpi', required=False, default=72, type=int, help='dpi')
+  parser.add_argument('--fontsize', required=False, default=14, type=int, help='fontsize')
+  parser.add_argument('--title_fontsize', required=False, default=14, type=int, help='fontsize')
+  parser.add_argument('--width', required=False, default=6, type=int, help='fontsize')
+  parser.add_argument('--height', required=False, default=2, type=int, help='fontsize')
   args = parser.parse_args()
   if args.verbose:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(sys.stdin, args.target, args.type, args.name, args.title, args.dpi)
+  plot(sys.stdin, args.target, args.type, args.name, args.dpi, args.title, args.normalize, args.fontsize, args.width, args.height, args.title_fontsize)
 

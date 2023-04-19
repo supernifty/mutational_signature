@@ -314,7 +314,7 @@ def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, do
     if out is not None:
       out.write('{}\t{}\t{}\n'.format('Variation', 'Count', 'Probability'))
       for k in sorted(counts):
-        out.write('{}\t{}\t{:.6f}\n'.format(k, counts[k], counts[k] / total_count))
+        out.write('{}\t{}\t{:.6f}\n'.format(k, counts[k], counts[k] / max(1, total_count)))
 
       # add zero results for SBS
       if not just_indels:

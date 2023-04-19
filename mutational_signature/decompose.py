@@ -181,6 +181,9 @@ def decompose(signatures_fh, counts_fh, out, metric='cosine', seed=None, evaluat
     names.append(fields[0])
     A = np.vstack([A, row]) # 30x96 -> each row is a set of context values
 
+  if first: # no records
+    logging.fatal('no signature definitions found')
+
   A = np.transpose(A) # -> each row is a signature
 
   # make target (b = observed_classes)

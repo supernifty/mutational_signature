@@ -8,7 +8,7 @@ import csv
 import logging
 import sys
 
-def main(input, output, adjust_from_fh, adjust_to_fh):
+def main(input, output, adjust_from_fh, adjust_to_fh, entire_variation):
   logging.info('starting...')
   adjust_from = {}
   for row in csv.DictReader(open(adjust_from_fh, 'r'), delimiter='\t'):
@@ -22,9 +22,15 @@ def main(input, output, adjust_from_fh, adjust_to_fh):
   updated = 0
   for row in csv.DictReader(sys.stdin, delimiter='\t'):
     if '>' in row['Variation']:
-      context = row['Variation'].split('>')[0]
+      if entire_variation:
+        context = row['Variation']
+      else:
+        context = row['Variation'].split('>')[0]
       if context in adjust_from and context in adjust_to:
-        ratio = adjust_to[context] / adjust_from[context]
+        if adjust_from[context] > 0:
+          ratio = adjust_to[context] / adjust_from[context]
+        else:
+          ratio = 1.0
         logging.debug('context %s from variation %s adjusting by %f = %i / %i', context, row['Variation'], ratio, adjust_to[context], adjust_from[context])
         fh.writerow({'Variation': row['Variation'], 'Count': int(int(row['Count']) * ratio), 'Probability': float(row['Probability']) * ratio})
         updated += 1
@@ -34,9 +40,10 @@ def main(input, output, adjust_from_fh, adjust_to_fh):
   logging.info('done. updated %i', updated)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Adjust exposures')
-  parser.add_argument('--adjust_from', required=True, help='context of source of variants')
-  parser.add_argument('--adjust_to', required=True, help='context of signatures')
+  parser = argparse.ArgumentParser(description='Adjust exposures by generating new counts file from stdin with each context adjusted by adjust_to/adjust_from')
+  parser.add_argument('--adjust_from', required=True, help='context of source of variants: tsv with Variation/Count')
+  parser.add_argument('--adjust_to', required=True, help='context of signatures: tsv with Variation/Count')
+  parser.add_argument('--entire_variation', action='store_true', help='match entire variation not just genomic context')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -44,4 +51,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  main(sys.stdin, sys.stdout, args.adjust_from, args.adjust_to)
+  main(sys.stdin, sys.stdout, args.adjust_from, args.adjust_to, args.entire_variation)
