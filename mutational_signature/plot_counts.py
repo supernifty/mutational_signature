@@ -20,7 +20,7 @@ HEIGHT=6
 
 rcParams['figure.figsize'] = WIDTH, HEIGHT
 
-def plot(counts, target, style='sbs', name=None, dpi=72, title=None, normalize=False, fontsize=14, width=6, height=2, title_fontsize=14):
+def plot(counts, target, style='sbs', name=None, dpi=72, title=None, normalize=False, fontsize=8, width=10, height=4, title_fontsize=10, ylim=None):
   logging.info('reading from stdin...')
   first = True
   vals = {}
@@ -54,13 +54,14 @@ def plot(counts, target, style='sbs', name=None, dpi=72, title=None, normalize=F
 
   sys.stderr.write('{} contexts\n'.format(len(vals)))
   if style == 'sbs':
-    plot_signature(vals, target, name=name, dpi=dpi, title=title, fontsize=fontsize, figure_width=width, figure_height=height, title_fontsize=title_fontsize)
+    plot_signature(vals, target, name=name, dpi=dpi, title=title, fontsize=fontsize, figure_width=width, figure_height=height, title_fontsize=title_fontsize, ylim=ylim)
   elif style == 'id':
-    plot_signature_ids(vals, target, name=name, dpi=dpi, title=title, fontsize=fontsize, figure_width=width, figure_height=height, title_fontsize=title_fontsize)
+    plot_signature_ids(vals, target, name=name, dpi=dpi, title=title, fontsize=fontsize, figure_width=width, figure_height=height, title_fontsize=title_fontsize, ylim=ylim)
   else:
     logging.warn('unrecognised plot type %s', style)
 
-def plot_signature(vals, target, name=None, fontsize=14, figure_width=10, figure_height=4, dpi=72, title=None, title_fontsize=14):
+def plot_signature(vals, target, name=None, fontsize=14, figure_width=10, figure_height=4, dpi=72, title=None, title_fontsize=14, ylim=None):
+  logging.debug('plotting with size %i x %i', figure_width, figure_height)
   #xs = sorted(vals.keys())
   xs = sorted(['{}>{} {}{}{}'.format(k[1], k[2], k[0], k[1], k[3]) for k in ['ACAA', 'ACAC', 'ACAG', 'ACAT', 'ACGA', 'ACGC', 'ACGG', 'ACGT', 'ACTA', 'ACTC', 'ACTG', 'ACTT', 'ATAA', 'ATAC', 'ATAG', 'ATAT', 'ATCA', 'ATCC', 'ATCG', 'ATCT', 'ATGA', 'ATGC', 'ATGG', 'ATGT', 'CCAA', 'CCAC', 'CCAG', 'CCAT', 'CCGA', 'CCGC', 'CCGG', 'CCGT', 'CCTA', 'CCTC', 'CCTG', 'CCTT', 'CTAA', 'CTAC', 'CTAG', 'CTAT', 'CTCA', 'CTCC', 'CTCG', 'CTCT', 'CTGA', 'CTGC', 'CTGG', 'CTGT', 'GCAA', 'GCAC', 'GCAG', 'GCAT', 'GCGA', 'GCGC', 'GCGG', 'GCGT', 'GCTA', 'GCTC', 'GCTG', 'GCTT', 'GTAA', 'GTAC', 'GTAG', 'GTAT', 'GTCA', 'GTCC', 'GTCG', 'GTCT', 'GTGA', 'GTGC', 'GTGG', 'GTGT', 'TCAA', 'TCAC', 'TCAG', 'TCAT', 'TCGA', 'TCGC', 'TCGG', 'TCGT', 'TCTA', 'TCTC', 'TCTG', 'TCTT', 'TTAA', 'TTAC', 'TTAG', 'TTAT', 'TTCA', 'TTCC', 'TTCG', 'TTCT', 'TTGA', 'TTGC', 'TTGG', 'TTGT']])
   ys = list([100 * vals.get(x, 0) for x in xs]) # convert to %
@@ -68,7 +69,8 @@ def plot_signature(vals, target, name=None, fontsize=14, figure_width=10, figure
   color = ((0.2,0.7,0.9),)*16 + ((0.1,0.1,0.1),)*16 + ((0.8,0.2,0.2),)*16 + ((0.8,0.8,0.8),)*16 + ((0.6,0.8,0.4),)*16 + ((0.9,0.8,0.7),)*16
   color = list(color)
 
-  ylim = max(ys)
+  if ylim is None:
+    ylim = max(ys)
   width = len(xs)
   x = range(width)
   f,ax = plt.subplots(1, figsize=(figure_width, figure_height))
@@ -84,7 +86,7 @@ def plot_signature(vals, target, name=None, fontsize=14, figure_width=10, figure
   ax2 = ax.twiny()
   ax2.set_xlim(ax.get_xlim())
   ax2.set_xticks([ width * (x/6.0 + 1/12.0) for x in range(6) ])
-  ax2.set_xticklabels(['C>A', 'C>G', 'C>T', 'T>A', 'T>C', 'T>G'], fontsize=fontsize)
+  ax2.set_xticklabels(['C>A', 'C>G', 'C>T', 'T>A', 'T>C', 'T>G'], fontsize=title_fontsize)
 
   for x in range(1, 6):
     ax.axvline(x=x * 16 - 0.5, color='#e0e0e0')
@@ -101,7 +103,7 @@ def plot_signature(vals, target, name=None, fontsize=14, figure_width=10, figure
   plt.savefig(target, bbox_inches='tight', dpi=dpi)
   plt.close()
 
-def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, figure_height=2, dpi=72, title=None, title_fontsize=14):
+def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, figure_height=2, dpi=72, title=None, title_fontsize=14, ylim=None):
   xs = sorted(vals.keys())
 
   contexts = ('DEL_C_1_0', 'DEL_C_1_1', 'DEL_C_1_2', 'DEL_C_1_3', 'DEL_C_1_4', 'DEL_C_1_5+', 
@@ -132,7 +134,8 @@ def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, fig
   color = ('#FECA82',) * 6 + ('#FF9400',) * 6 + ('#BBE19E',) * 6 + ('#3EAD3D',) * 6 + ('#FCD6C1',) * 6 + ('#FE9E7D',) * 6 + ('#F65B47',) * 6 + ('#C82F1D',) * 6 + ('#D8E8F7',) * 6 + ('#A5CFE5',) * 6 + ('#5AAAD3',) * 6 + ('#167AB7',) * 6 + ('#E8E8EE',) * 1 + ('#C2C3DE',) * 2 + ('#999ACE',) * 3 + ('#7758A8',) * 5
   color = list(color)
 
-  ylim = max(ys)
+  if ylim is None:
+    ylim = max(ys)
   width = len(contexts) # 84
   x = range(width)
   fig, ax = plt.subplots(1, figsize=(figure_width, figure_height))
@@ -156,7 +159,7 @@ def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, fig
   ax2.tick_params(axis='both', which='both', length=0)
   ax2.set_xlim(ax.get_xlim())
   ax2.set_xticks([ width * (0/84 + 6/84), width * (12/84 + 6/84), width * (24/84 + 12/84), width * (48/84 + 12/84), width * (72/84 + 6/84)])
-  ax2.set_xticklabels(['1bp deletion', '1bp insertion', '>1bp deletion at repeat\n(deletion length)', '>1bp insertion at repeat\n(insertion length)', 'Deletion with microhomology\n(deletion length)'], fontsize=fontsize)
+  ax2.set_xticklabels(['1bp deletion', '1bp insertion', '>1bp deletion at repeat\n(deletion length)', '>1bp insertion at repeat\n(insertion length)', 'Deletion with microhomology\n(deletion length)'], fontsize=title_fontsize)
 
   # bottom axes
   ax3 = ax.twiny()
@@ -166,7 +169,7 @@ def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, fig
   ax3.spines['bottom'].set_visible(False)
   ax3.tick_params(axis='both', which='both', length=0)
   ax3.set_xticks([ width * (0/84 + 6/84), width * (12/84 + 6/84), width * (24/84 + 12/84), width * (48/84 + 12/84), width * (72/84 + 6/84)])
-  ax3.set_xticklabels(['Homopolymer length', 'Homopolymer length', 'Number of repeat units', 'Number of repeat units', 'Microhomology length'], fontsize=fontsize)
+  ax3.set_xticklabels(['Homopolymer length', 'Homopolymer length', 'Number of repeat units', 'Number of repeat units', 'Microhomology length'], fontsize=title_fontsize)
 
   # additional help
   squiggem = 0.01 * ylim
@@ -200,13 +203,14 @@ if __name__ == '__main__':
   parser.add_argument('--dpi', required=False, default=72, type=int, help='dpi')
   parser.add_argument('--fontsize', required=False, default=14, type=int, help='fontsize')
   parser.add_argument('--title_fontsize', required=False, default=14, type=int, help='fontsize')
-  parser.add_argument('--width', required=False, default=6, type=int, help='fontsize')
-  parser.add_argument('--height', required=False, default=2, type=int, help='fontsize')
+  parser.add_argument('--width', required=False, default=10, type=int, help='fontsize')
+  parser.add_argument('--height', required=False, default=4, type=int, help='fontsize')
+  parser.add_argument('--ylim', required=False, type=float, help='fix maximum y')
   args = parser.parse_args()
   if args.verbose:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(sys.stdin, args.target, args.type, args.name, args.dpi, args.title, args.normalize, args.fontsize, args.width, args.height, args.title_fontsize)
+  plot(sys.stdin, args.target, args.type, args.name, args.dpi, args.title, args.normalize, args.fontsize, args.width, args.height, args.title_fontsize, args.ylim)
 

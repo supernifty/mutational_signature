@@ -312,14 +312,15 @@ def decompose(signatures_fh, counts_fh, out, metric='cosine', seed=None, evaluat
     else:
       total_error = error[0]
     if out is not None:
-      if metric == m:
+      if metric == m: # our chosen error metric
         out.write('Error\t{:.3f}\n'.format(total_error))
         if error_contribution:
           for context_name, error_contribution, difference in zip(signature_classes, error[1], context_difference(A, b, result)):
             # context \t error % \t number of mutations
             out.write('Error {}\t{:.3f}\t{:.1f}\n'.format(context_name, error_contribution, difference))
       out.write('Error_{}\t{:.3f}\n'.format(m, total_error))
-    target_error = (total_error, error[1])
+    if metric == m: # our chosen error metric
+      target_error = (total_error, error[1])
 
   return {'signature_names': all_names, 'signature_values': all_result, 'total': total, 'error': target_error, 'total_included': total_count}
 
