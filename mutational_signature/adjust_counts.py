@@ -17,6 +17,9 @@ def main(input, output, adjust_from_fh, adjust_to_fh, entire_variation):
   for row in csv.DictReader(open(adjust_to_fh, 'r'), delimiter='\t'):
     adjust_to[row['Variation']] = int(row['Count'])
 
+  seen_from = sum([adjust_from[x] for x in adjust_from])
+  seen_to = sum([adjust_to[x] for x in adjust_to])
+
   fh = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=['Variation', 'Count', 'Probability'])
   fh.writeheader()
   updated = 0
@@ -28,11 +31,11 @@ def main(input, output, adjust_from_fh, adjust_to_fh, entire_variation):
         context = row['Variation'].split('>')[0]
       if context in adjust_from and context in adjust_to:
         if adjust_from[context] > 0:
-          ratio = adjust_to[context] / adjust_from[context]
+          ratio = adjust_from[context] / adjust_to[context] * seen_to / seen_from
         else:
           ratio = 1.0
-        logging.debug('context %s from variation %s adjusting by %f = %i / %i', context, row['Variation'], ratio, adjust_to[context], adjust_from[context])
-        fh.writerow({'Variation': row['Variation'], 'Count': int(int(row['Count']) * ratio), 'Probability': float(row['Probability']) * ratio})
+        logging.debug('context %s from variation %s adjusting by %f = %i / %i', context, row['Variation'], ratio, adjust_to[context] / seen_to, adjust_from[context] / seen_from)
+        fh.writerow({'Variation': row['Variation'], 'Count': int(row['Count']) * ratio, 'Probability': float(row['Probability']) * ratio})
         updated += 1
       else:
         fh.writerow({'Variation': row['Variation'], 'Count': row['Count'], 'Probability': row['Probability']})

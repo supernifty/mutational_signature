@@ -24,6 +24,8 @@ def main(prefix, category, sig_col, fontsize, title_fontsize, dpi, suffix, ylim,
     elif category == 'ids':
       vals = {k: float(row[k]) for k in row if k != sig_col}
       mutational_signature.plot_counts.plot_signature_ids(vals, output, name=row[sig_col], fontsize=fontsize, title_fontsize=title_fontsize, dpi=dpi, ylim=ylim, figure_width=width, figure_height=height)
+    else:
+      logging.warning('choose sbs or ids')
 
     logging.info('plotting %s: done', output)
   logging.info('done')

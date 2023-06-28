@@ -52,6 +52,7 @@ def plot(counts, target, style='sbs', name=None, dpi=72, title=None, normalize=F
     normed = {k: vals[k] / sum([vals[x] for x in vals]) for k in vals}
     vals = normed
 
+  logging.debug('vals: %s', vals)
   sys.stderr.write('{} contexts\n'.format(len(vals)))
   if style == 'sbs':
     plot_signature(vals, target, name=name, dpi=dpi, title=title, fontsize=fontsize, figure_width=width, figure_height=height, title_fontsize=title_fontsize, ylim=ylim)
@@ -189,7 +190,9 @@ def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, fig
 
   if name is not None:
     plt.annotate(name, xy=(0.01, 1-title_fontsize * 0.01), xycoords='axes fraction', fontsize=title_fontsize)
+  logging.debug('saving %s...', target)
   plt.savefig(target, bbox_inches='tight', dpi=dpi)
+  logging.debug('saving %s: done', target)
   plt.close()
  
 if __name__ == '__main__':
