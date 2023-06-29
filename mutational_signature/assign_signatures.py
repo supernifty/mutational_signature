@@ -94,7 +94,7 @@ def plot_sbs_signature(vals, target, contexts, sigs):
 
   plt.savefig(target, dpi=DPI)
 
-def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, plot):
+def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, plot, vcf_out, signatures_of_interest):
   logging.info('starting...')
   # signatures:
   # SBS1    0.234
@@ -143,8 +143,8 @@ def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, p
 
   # Signature	Summary	Context
   # SBS1	Aging	ACG>ATG
+  artefact_signatures = set()
   if artefacts is not None:
-    artefact_signatures = set()
     for row in csv.DictReader(open(artefacts, 'r'), delimiter='\t'):
       if 'artefact' in row['Summary'].lower():
         artefact_signatures.add(row['Signature'])
@@ -156,7 +156,7 @@ def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, p
     total = sum([likelihood[0] for likelihood in contexts[context]])
     # [(0.45, SBS1), (0.2, SBS6)...]
     normalized_context[context] = [(contexts[context][idx][0] / total, contexts[context][idx][1]) for idx in range(0, len(contexts[context]))]
-    logging.debug('normalized %s -> %s', context, normalized_context[context])
+    #logging.debug('normalized %s -> %s', context, normalized_context[context])
 
   contexts = normalized_context
 
@@ -164,43 +164,54 @@ def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, p
   annotation = {}
   artefact_likelihood = {}
   for context in contexts:
-    annotation[context] = ','.join(['{}/{:.3f}'.format(likelihood[1], likelihood[0]) for likelihood in contexts[context] if likelihood[0] > threshold])
+    annotation[context] = ','.join(['{}/{:.3f}'.format(likelihood[1], likelihood[0]) for likelihood in contexts[context] if likelihood[0] > threshold and (signatures_of_interest is None or likelihood[1] in signatures_of_interest)])
     artefact_likelihood[context] = '{:.3f}'.format(sum([likelihood[0] for likelihood in contexts[context] if likelihood[1] in artefact_signatures]))
     # find max
     best = None
     for item in contexts[context]:
       if best is None or item[0] > best[0]:
         best = item
-    logging.debug('%s: %s most likely: %s', context, annotation[context], best)
+    #logging.debug('%s: %s most likely: %s', context, annotation[context], best)
 
   # vcf
   if vcf is not None:
     logging.info('annotating vcf...')
     
-    vcf_in = cyvcf2.VCF(vcf)
-    vcf_in.add_info_to_header({'ID': 'signature_likelihood', 'Description': 'signature likelihood', 'Type':'Character', 'Number': '1'})
+    #vcf_in = cyvcf2.VCF(vcf)
+    #vcf_in.add_info_to_header({'ID': 'signature_likelihood', 'Description': 'signature likelihood', 'Type':'Character', 'Number': '1'})
+    #if len(artefact_signatures) > 0:
+    #  vcf_in.add_info_to_header({'ID': 'signature_artefact', 'Description': 'signature artefact likelihood', 'Type':'Character', 'Number': '1'})
+    #sys.stdout.write(vcf_in.raw_header)
+
+    vcf_out['add_to_header']({'ID': 'signature_likelihood', 'Description': 'signature likelihood', 'Type':'Character', 'Number': '1'})
     if len(artefact_signatures) > 0:
-      vcf_in.add_info_to_header({'ID': 'signature_artefact', 'Description': 'signature artefact likelihood', 'Type':'Character', 'Number': '1'})
-    sys.stdout.write(vcf_in.raw_header)
+      vcf_out['add_to_header']({'ID': 'signature_artefact', 'Description': 'signature artefact likelihood', 'Type':'Character', 'Number': '1'})
+    vcf_out['write_header'](vcf)
 
     counts = collections.defaultdict(int)
     skipped_no_context = skipped_wrong_context = added = 0
-    for line, variant in enumerate(vcf_in):
+    for line, variant in enumerate(vcf):
+      #logging.debug('processing line %i: %s...', line, variant)
       try:
         context = variant.INFO["snv_context"]
       except:
-        skipped_no_context += 1
-        continue
+        try:
+          context = variant.row["snv_context"]
+        except:
+          skipped_no_context += 1
+          continue
 
       if context in contexts:
-        variant.INFO["signature_likelihood"] = annotation[context]
-        if len(artefact_signatures) > 0:
-          variant.INFO["signature_artefact"] = artefact_likelihood[context]
-        counts[context] += 1
+        #variant.INFO["signature_likelihood"] = annotation[context]
+        #if len(artefact_signatures) > 0:
+        #  variant.INFO["signature_artefact"] = artefact_likelihood[context]
+        #counts[context] += 1
         added += 1
       else:
         skipped_wrong_context += 1
-      sys.stdout.write(str(variant))
+
+      #sys.stdout.write(str(variant))
+      vcf_out['write_variant'](variant, annotation[context], artefact_likelihood[context])
 
     # reconstruction
     logging.debug('counts: %s', counts)
@@ -220,11 +231,78 @@ def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, p
 
     logging.info('done: skipped no context %i skipped wrong context %i added %i', skipped_no_context, skipped_wrong_context, added)
 
+def vcf_writer(out):
+  def write_header(vcf_in):
+    out.write(vcf_in.raw_header)
+
+  def write_variant(variant, signature_likelihood, signature_artefact):
+    if signature_likelihood is not None:
+      variant.INFO["signature_likelihood"] = signature_likelihood
+    if signature_artefact is not None:
+      variant.INFO["signature_artefact"] = signature_artefact
+    out.write(str(variant))
+
+  def add_to_header(d):
+    vcf_in.add_info_to_header(d)
+
+  return {'write_header': write_header, 'write_variant': write_variant, 'add_to_header': add_to_header}
+
+def maf_to_vcf(maf, chrom_col, pos_col, ref_col, alt_col):
+
+  def maf_reader(reader):
+    Variant = collections.namedtuple('Variant', 'CHROM POS REF ALT row')
+  
+    for line, row in enumerate(reader):
+      if line % 1000 == 0:
+        logging.debug('processed %i lines of %s...', line, maf)
+  
+  
+      chrom = row[chrom_col]
+      pos = int(row[pos_col])
+      ref = row[ref_col]
+      if ref == '-':
+        pos += 1 # fix for TCGA mafs
+      ref = ref.replace('-', '')
+      alt = row[alt_col]
+  
+      #logging.debug('yielding variant...%s %s %s', chrom, pos, ref)
+      yield Variant(chrom, pos, ref, (alt,), row)
+
+  # enumeration a maf into a variant
+  logging.debug('opening %s for reading...', maf)
+  reader = csv.DictReader(open(maf, 'r'), delimiter='\t')
+  return {'tsv_reader': reader, 'maf_reader': maf_reader(reader)}
+
+def maf_writer(out): # DictWriter
+
+  def write_header(vcf_in):
+    out.writeheader()
+
+  def write_variant(variant, signature_likelihood, signature_artefact):
+    if signature_likelihood is not None:
+      variant.row["signature_likelihood"] = signature_likelihood
+    if signature_artefact is not None:
+      variant.row["signature_artefact"] = signature_artefact
+    out.writerow(variant.row)
+
+  def dummy(d):
+    pass
+
+  return {'write_header': write_header, 'write_variant': write_variant, 'add_to_header': dummy}
+
+
+
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Assign signature probabilities to variants')
   parser.add_argument('--vcf', required=False, help='annotated vcf file')
+  parser.add_argument('--is_maf', action='store_true', help='vcf is a maf')
+  parser.add_argument('--maf_chrom_column', required=False, default='Chromosome', help='maf chrom column name')
+  parser.add_argument('--maf_pos_column', required=False, default='Start_Position', help='maf pos column name')
+  parser.add_argument('--maf_ref_column', required=False, default='Reference_Allele', help='maf ref column name')
+  parser.add_argument('--maf_alt_column', required=False, default='Tumor_Seq_Allele2', help='maf alt column name')
   parser.add_argument('--plot', required=False, help='plot context breakdowns')
   parser.add_argument('--signatures', required=False, help='calculated signatures used as prior')
+  parser.add_argument('--signatures_of_interest', required=False, nargs='+', help='signature names to include')
   parser.add_argument('--signatures_belief', required=False, default=1, type=float, help='how much to believe new signatures')
   parser.add_argument('--definition', required=True, help='signature definition')
   parser.add_argument('--artefacts', required=False, help='artefacts')
@@ -236,4 +314,11 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  main(args.vcf, args.signatures, args.signatures_belief, args.definition, args.artefacts, args.threshold, args.plot)
+  if args.is_maf:
+    vcf_in = maf_to_vcf(args.vcf, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column)
+    writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['signature_likelihood', 'signature_artefact'])
+    vcf_out = maf_writer(writer)
+    main(vcf_in['maf_reader'], args.signatures, args.signatures_belief, args.definition, args.artefacts, args.threshold, args.plot, vcf_out, args.signatures_of_interest)
+  else:
+    vcf_in = cyvcf2.VCF(args.vcf)
+    main(vcf_in, args.signatures, args.signatures_belief, args.definition, args.artefacts, args.threshold, args.plot, vcf_writer(sys.stdout), args.signatures_of_interest)

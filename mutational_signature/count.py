@@ -373,7 +373,7 @@ def read_transcripts(transcripts):
   logging.info('reading %s: done with %i exon bases and %i tx bases', transcripts, bases, txbases)
   return txtree, tree
 
-def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublets=False, indels=False, just_indels=False, transcripts_fn=None, mer=3, weight=None):
+def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublets=False, indels=False, just_indels=False, transcripts_fn=None, mer=3, weight=None, extended=extended):
   logging.info('processing vcf...')
 
   if chroms is None:
@@ -402,7 +402,6 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
     if SKIP_M and (variant.CHROM == 'M' or variant.CHROM == 'MT'):
       logging.info('skipping %s', variant.CHROM)
       continue
-
 
     if no_chr(variant.CHROM) not in chroms_seen:
       logging.debug('chrom %s seen in vcf but not in %s', no_chr(variant.CHROM), chroms_seen)
@@ -520,6 +519,7 @@ if __name__ == '__main__':
   parser.add_argument('--indels', action='store_true', help='count indels')
   parser.add_argument('--just_indels', action='store_true', help='count only indels')
   parser.add_argument('--transcripts', required=False, help='refseq transcript file')
+  parser.add_argument('--extended', required=False, nargs='+', help='the 5 prime base count e.g. at -3=A -4=A')
   parser.add_argument('--mer', required=False, default=3, type=int, help='context length to consider for sbs')
   parser.add_argument('--weight_field', required=False, help='weight mutations by vcf field')
   parser.add_argument('--verbose', action='store_true', help='more logging')
@@ -542,7 +542,7 @@ if __name__ == '__main__':
       out = open(args.out[idx], 'w')
       out_fn = args.out[idx]
     logging.info('processing %i of %i: %s -> %s...', idx, len(args.vcf), v, out_fn)
-    result = count(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=out, chroms=chroms, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, transcripts_fn=args.transcripts, mer=args.mer, weight=args.weight_field)
+    result = count(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=out, chroms=chroms, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, transcripts_fn=args.transcripts, mer=args.mer, weight=args.weight_field, extended=args.extended)
     chroms = result['chroms']
     logging.info('chroms is %s', chroms.keys())
     logging.info('processing %i of %i: %s -> %s: done', idx, len(args.vcf), v, out_fn)
