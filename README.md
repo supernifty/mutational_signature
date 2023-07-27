@@ -99,6 +99,11 @@ python mutational_signature/refine_signatures.py \
 python mutational_signature/histograms.py --exclude_below 0.05 --exposures *.exposures --target hists.sbs.png --cols 6
 ```
 
+### Simulation
+```
+python mutational_signature/simulate.py --verbose --n 1 --sigdefs data/signatures_cosmic_v3.2_sbs.txt --noise 10,5 --exposures SBS1,100,40 --injection SBS88,0.05
+```
+
 ## Functionality
 * combine_counts: for multiple count files, combine into a single tsv
 * combine_signatures: for multiple signature files, combine into a single tsv
