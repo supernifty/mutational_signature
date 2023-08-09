@@ -346,7 +346,7 @@ if __name__ == '__main__':
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--transcripts', required=False, help='transcript from ucsc')
   parser.add_argument('--vcf', required=True, help='vcf or maf')
-  parser.add_argument('--rules', nargs='+', required=True, help='extended contexts to look for. of the form e.g. "T>*,-3=A A>*,+3=T"')
+  parser.add_argument('--rules', nargs='*', required=False, help='extended contexts to look for. of the form e.g. "T>*,-3=A A>*,+3=T"')
   parser.add_argument('--vcf_not_zipped', action='store_true', help='do not try to unzip (only matters for maf)')
   parser.add_argument('--maf_sample', required=False, help='vcf is actually a maf with this sample of interest')
   parser.add_argument('--maf_sample_column', required=False, default='Tumor_Sample_Barcode', help='maf chrom column name')

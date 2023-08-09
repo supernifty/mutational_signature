@@ -6,12 +6,15 @@
 import argparse
 import collections
 import csv
+import gzip
 import logging
 import sys
 
 import cyvcf2
+import intervaltree
 
 COMP = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
+EXCLUDE_UTR=True # transcription bias
 
 def normalize(v):
   '''
@@ -105,11 +108,13 @@ def vcf_writer(out):
   def write_header(vcf_in):
     out.write(vcf_in.raw_header)
 
-  def write_variant(variant, snv_context, surrounding_context):
+  def write_variant(variant, snv_context, surrounding_context, tx_strand):
     if snv_context is not None:
       variant.INFO["snv_context"] = snv_context
     if surrounding_context is not None:
       variant.INFO["surrounding"] = surrounding_context
+    if tx_strand is not None:
+      variant.INFO["tx_strand"] = tx_strand
     out.write(str(variant))
 
   def add_to_header(d):
@@ -117,7 +122,45 @@ def vcf_writer(out):
 
   return {'write_header': write_header, 'write_variant': write_variant, 'add_to_header': add_to_header}
 
-def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequence=0, plot=None):
+def no_chr(chrom):
+  if chrom == 'MT':
+    return 'M'
+  # deals with chrUn_gl000220.1
+  return chrom.split('.')[0].split('_', maxsplit=1)[-1].replace('chr', '').upper()
+
+def read_transcripts(transcripts):
+  logging.info('reading %s...', transcripts)
+  tree = {}
+  txtree = {}
+  bases = 0
+  txbases = 0
+  #bin    name    chrom   strand  txStart txEnd   cdsStart        cdsEnd  exonCount       exonStarts      exonEnds        score   name2   cdsStartStat    cdsEndStat      exonFrames
+  for rowline, row in enumerate(csv.DictReader(gzip.open(transcripts, 'rt'), delimiter='\t')):
+    chrom = no_chr(row['chrom'])
+    if chrom not in tree:
+      logging.debug('added %s to transcripts. %i exon bases and %i transcript bases so far', chrom, bases, txbases)
+      tree[chrom] = intervaltree.IntervalTree()
+      txtree[chrom] = intervaltree.IntervalTree()
+    txtree[chrom][int(row['txStart']):int(row['txEnd'])] = row['strand']
+    txbases += int(row['txEnd']) - int(row['txStart'])
+    for start, end in zip(row['exonStarts'].split(','), row['exonEnds'].split(',')):
+      if start == '' or end == '':
+        continue
+      if EXCLUDE_UTR:
+        start = max(int(start), int(row['cdsStart']))
+        end = min(int(end), int(row['cdsEnd']))
+        if start < end:
+          tree[chrom][start:end] = row['strand'] # + or -
+          bases += end - start
+      else:
+        tree[chrom][start:end] = row['strand']
+        bases += end - start
+    if rowline % 1000 == 0:
+      logging.debug('processed %i lines...', rowline)
+  logging.info('reading %s: done with %i exon bases and %i tx bases', transcripts, bases, txbases)
+  return txtree, tree
+
+def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequence=0, plot=None, transcripts_fn=None):
   logging.info('processing...')
 
   if chroms is None:
@@ -136,6 +179,12 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
     out['add_to_header']({'ID': 'surrounding', 'Description': 'reference sequence surrounding variant', 'Type':'Character', 'Number': '1'})
   out['write_header'](vcf_in)
 
+  if transcripts_fn is not None:
+    transcripts, exons = read_transcripts(transcripts_fn)
+    out['add_to_header']({'ID': 'tx_strand', 'Description': 'which transcript if any is the variant on', 'Type':'Character', 'Number': '1'})
+  else:
+    transcripts, exons = (None, None)
+
   line = 0
   for line, variant in enumerate(vcf_in):
     chrom = variant.CHROM.replace('chr', '')
@@ -151,12 +200,35 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
     snv_context = context(variant, chroms)
     surrounding_context = surrounding(variant, sequence, chroms)
 
-    out['write_variant'](variant, snv_context, surrounding_context)
+    # determine transcript if relevant
+    if transcripts is not None and no_chr(variant.CHROM) in transcripts:
+      intersections = transcripts[no_chr(variant.CHROM)][variant.POS]
+      if len(intersections) == 0:
+        logging.debug('%s:%i is not coding', no_chr(variant.CHROM), variant.POS)
+        tx_strand = None
+      elif len(intersections) > 1:
+        logging.debug('%i multiple intersections at %s:%i', len(intersections), no_chr(variant.CHROM), variant.POS) # can't decide
+        tx_strand = list(intersections)[0][2]
+        logging.debug('%i multiple intersections at %s:%i: first is %s', len(intersections), no_chr(variant.CHROM), variant.POS, tx_strand) # can't decide
+      else:
+        tx_strand = list(intersections)[0][2]
+    else:
+      tx_strand = None
+
+    out['write_variant'](variant, snv_context, surrounding_context, tx_strand)
 
     if (line + 1) % 10000 == 0:
       logging.debug('processed %i lines...', line + 1)
     
   logging.info('processing: filtered %i of %i. done', filtered, line)
+
+# accept colnames of the form Variant/1
+def maf_value(colname, row):
+  if '/' in colname:
+    c, n = colname.split('/')
+    return row[c].split('/')[int(n)]
+  else:
+    return row[colname]
 
 def maf_to_vcf(maf, chrom_col, pos_col, ref_col, alt_col):
 
@@ -167,14 +239,15 @@ def maf_to_vcf(maf, chrom_col, pos_col, ref_col, alt_col):
       if line % 1000 == 0:
         logging.debug('processed %i lines of %s...', line, maf)
   
-  
-      chrom = row[chrom_col]
-      pos = int(row[pos_col])
-      ref = row[ref_col]
+      if '/' in chrom_col:
+        chrom = row 
+      chrom = maf_value(chrom_col, row)
+      pos = int(maf_value(pos_col, row))
+      ref = maf_value(ref_col, row)
       if ref == '-':
         pos += 1 # fix for TCGA mafs
       ref = ref.replace('-', '')
-      alt = row[alt_col]
+      alt = maf_value(alt_col, row)
   
       yield Variant(chrom, pos, ref, (alt,), row)
 
@@ -187,11 +260,13 @@ def maf_writer(out): # DictWriter
   def write_header(vcf_in):
     out.writeheader()
 
-  def write_variant(variant, snv_context, surrounding_context):
+  def write_variant(variant, snv_context, surrounding_context, tx_strand):
     if snv_context is not None:
       variant.row["snv_context"] = snv_context
     if surrounding_context is not None:
       variant.row["surrounding"] = surrounding_context
+    if tx_strand is not None:
+      variant.row["tx_strand"] = tx_strand
     out.writerow(variant.row)
 
   def dummy(d):
@@ -211,6 +286,7 @@ if __name__ == '__main__':
   parser.add_argument('--maf_ref_column', required=False, default='Reference_Allele', help='maf ref column name')
   parser.add_argument('--maf_alt_column', required=False, default='Tumor_Seq_Allele2', help='maf alt column name')
   parser.add_argument('--plot', required=False, help='plot context breakdowns')
+  parser.add_argument('--transcripts', required=False, help='refseq transcript file')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -220,9 +296,9 @@ if __name__ == '__main__':
 
   if args.is_maf:
     vcf_in = maf_to_vcf(args.vcf, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column)
-    writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['snv_context', 'surrounding'])
+    writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['snv_context', 'surrounding', 'tx_strand'])
     vcf_out = maf_writer(writer)
-    annotate(open(args.genome, 'r'), vcf_in['maf_reader'], vcf_out, sequence=args.sequence, plot=args.plot)
+    annotate(open(args.genome, 'r'), vcf_in['maf_reader'], vcf_out, sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts)
   else:
     vcf_in = cyvcf2.VCF(args.vcf)
-    annotate(open(args.genome, 'r'), vcf_in, vcf_writer(sys.stdout), sequence=args.sequence, plot=args.plot)
+    annotate(open(args.genome, 'r'), vcf_in, vcf_writer(sys.stdout), sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts)

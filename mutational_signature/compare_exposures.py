@@ -26,13 +26,13 @@ def pearson(x, y):
 
 def compare(x_exposures, y_exposures, out, plot, x_label, y_label, title, log, measure):
 
-  exclude = ('Error', 'Mutations')
+  exclude = ('Error', 'Mutations', 'Variation')
   seen = set()
 
   logging.info('processing %s...', x_exposures)
   x = collections.defaultdict(float)
   for line in open(x_exposures, 'r'):
-    k, v = line.strip('\n').split('\t')
+    k, v = line.strip('\n').split('\t')[:2]
     if k not in exclude:
       x[k] = float(v)
       seen.add(k)
@@ -40,7 +40,7 @@ def compare(x_exposures, y_exposures, out, plot, x_label, y_label, title, log, m
   logging.info('processing %s...', y_exposures)
   y = collections.defaultdict(float)
   for line in open(y_exposures, 'r'):
-    k, v = line.strip('\n').split('\t')
+    k, v = line.strip('\n').split('\t')[:2]
     if k not in exclude:
       y[k] = float(v)
       seen.add(k)

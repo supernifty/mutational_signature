@@ -49,7 +49,10 @@ def compare(exposures, signatures, measure, out):
     for c in r: # columns
       if c == 'Sig':
         continue
-      context = '{}{}{}>{}'.format(c[0], c[1], c[3], c[2])
+      if len(c) == 4 and all([x in 'ACGT' for x in c]):
+        context = '{}{}{}>{}'.format(c[0], c[1], c[3], c[2])
+      else:
+        context = c
       if context in x:
         y[context] = float(r[c])
       else:
