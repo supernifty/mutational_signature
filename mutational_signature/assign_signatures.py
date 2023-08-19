@@ -146,9 +146,9 @@ def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, p
   artefact_signatures = set()
   if artefacts is not None:
     for row in csv.DictReader(open(artefacts, 'r'), delimiter='\t'):
-      if 'artefact' in row['Summary'].lower():
+      if 'artefact' in row['Summary'].lower() and (signatures_of_interest is None or row['Signature'] in signatures_of_interest):
         artefact_signatures.add(row['Signature'])
-    logging.info('%i signatures marked as artefact: %s', len(artefact_signatures), ' '.join(list(artefact_signatures)))
+  logging.info('%i signatures marked as artefact: %s', len(artefact_signatures), ' '.join(list(artefact_signatures)))
 
   # normalize on contexts
   normalized_context = {}
@@ -165,7 +165,8 @@ def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, p
   artefact_likelihood = {}
   for context in contexts:
     annotation[context] = ','.join(['{}/{:.3f}'.format(likelihood[1], likelihood[0]) for likelihood in contexts[context] if likelihood[0] > threshold and (signatures_of_interest is None or likelihood[1] in signatures_of_interest)])
-    artefact_likelihood[context] = '{:.3f}'.format(sum([likelihood[0] for likelihood in contexts[context] if likelihood[1] in artefact_signatures]))
+    if len(artefact_signatures) > 0:
+      artefact_likelihood[context] = '{:.3f}'.format(sum([likelihood[0] for likelihood in contexts[context] if likelihood[1] in artefact_signatures]))
     # find max
     best = None
     for item in contexts[context]:
@@ -211,7 +212,7 @@ def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, p
         skipped_wrong_context += 1
 
       #sys.stdout.write(str(variant))
-      vcf_out['write_variant'](variant, annotation[context], artefact_likelihood[context])
+      vcf_out['write_variant'](variant, annotation.get(context, 'na'), artefact_likelihood.get(context, ''))
 
     # reconstruction
     logging.debug('counts: %s', counts)
@@ -238,7 +239,7 @@ def vcf_writer(out):
   def write_variant(variant, signature_likelihood, signature_artefact):
     if signature_likelihood is not None:
       variant.INFO["signature_likelihood"] = signature_likelihood
-    if signature_artefact is not None:
+    if signature_artefact is not None and signature_artefact != '':
       variant.INFO["signature_artefact"] = signature_artefact
     out.write(str(variant))
 
@@ -281,7 +282,7 @@ def maf_writer(out): # DictWriter
   def write_variant(variant, signature_likelihood, signature_artefact):
     if signature_likelihood is not None:
       variant.row["signature_likelihood"] = signature_likelihood
-    if signature_artefact is not None:
+    if signature_artefact is not None and signature_artefact != '':
       variant.row["signature_artefact"] = signature_artefact
     out.writerow(variant.row)
 
@@ -316,7 +317,10 @@ if __name__ == '__main__':
 
   if args.is_maf:
     vcf_in = maf_to_vcf(args.vcf, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column)
-    writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['signature_likelihood', 'signature_artefact'])
+    if args.artefacts is None:
+      writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['signature_likelihood'])
+    else:
+      writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['signature_likelihood', 'signature_artefact'])
     vcf_out = maf_writer(writer)
     main(vcf_in['maf_reader'], args.signatures, args.signatures_belief, args.definition, args.artefacts, args.threshold, args.plot, vcf_out, args.signatures_of_interest)
   else:

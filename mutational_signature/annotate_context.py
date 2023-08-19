@@ -227,6 +227,9 @@ def maf_value(colname, row):
   if '/' in colname:
     c, n = colname.split('/')
     return row[c].split('/')[int(n)]
+  elif '-' in colname:
+    c, n = colname.split('-')
+    return row[c].split('-')[int(n)]
   else:
     return row[colname]
 
