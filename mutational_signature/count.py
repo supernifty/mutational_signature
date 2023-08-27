@@ -373,7 +373,10 @@ def read_transcripts(transcripts):
   logging.info('reading %s: done with %i exon bases and %i tx bases', transcripts, bases, txbases)
   return txtree, tree
 
-def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublets=False, indels=False, just_indels=False, transcripts_fn=None, mer=3, weight=None, extended=extended):
+def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublets=False, indels=False, just_indels=False, transcripts_fn=None, mer=3, weight=None, extended=None):
+  '''
+    extended not used
+  '''
   logging.info('processing vcf...')
 
   if chroms is None:
