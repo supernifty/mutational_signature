@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-  adds snv_context to a vcf
+  adds sig_context to a vcf
 '''
 
 import argparse
@@ -12,6 +12,8 @@ import sys
 
 import cyvcf2
 import intervaltree
+
+import mutational_signature.count
 
 COMP = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 EXCLUDE_UTR=True # transcription bias
@@ -65,8 +67,11 @@ def context(variant, chroms):
     logging.info('skipped edge variant at %s:%i', chrom, variant.POS)
     return None
   if len(variant.REF) != 1 or len(variant.ALT) == 0 or len(variant.ALT[0]) != 1:
-    logging.debug('skipped indel at %s:%i', chrom, variant.POS)
-    return None
+    # indel context!
+    logging.debug('indel at %s:%i', chrom, variant.POS)
+    category = mutational_signature.count.get_indel_category(variant, chroms)
+    indel_category = '{category}_{content}_{length}_{repeats}'.format(**category)
+    return indel_category
 
   # 0 1 2 -> my indexes
   # 1 2 3 -> vcf indexes
@@ -108,9 +113,9 @@ def vcf_writer(out):
   def write_header(vcf_in):
     out.write(vcf_in.raw_header)
 
-  def write_variant(variant, snv_context, surrounding_context, tx_strand):
-    if snv_context is not None:
-      variant.INFO["snv_context"] = snv_context
+  def write_variant(variant, sig_context, surrounding_context, tx_strand):
+    if sig_context is not None:
+      variant.INFO["sig_context"] = sig_context
     if surrounding_context is not None:
       variant.INFO["surrounding"] = surrounding_context
     if tx_strand is not None:
@@ -174,7 +179,7 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
   filtered = 0
 
   #vcf_in = cyvcf2.VCF(vcf)
-  out['add_to_header']({'ID': 'snv_context', 'Description': 'mutational signature trinucleotide context', 'Type':'Character', 'Number': '1'})
+  out['add_to_header']({'ID': 'sig_context', 'Description': 'mutational signature trinucleotide context', 'Type':'Character', 'Number': '1'})
   if sequence > 0:
     out['add_to_header']({'ID': 'surrounding', 'Description': 'reference sequence surrounding variant', 'Type':'Character', 'Number': '1'})
   out['write_header'](vcf_in)
@@ -197,7 +202,7 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
       filtered += 1
       continue
 
-    snv_context = context(variant, chroms)
+    sig_context = context(variant, chroms)
     surrounding_context = surrounding(variant, sequence, chroms)
 
     # determine transcript if relevant
@@ -215,7 +220,7 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
     else:
       tx_strand = None
 
-    out['write_variant'](variant, snv_context, surrounding_context, tx_strand)
+    out['write_variant'](variant, sig_context, surrounding_context, tx_strand)
 
     if (line + 1) % 10000 == 0:
       logging.debug('processed %i lines...', line + 1)
@@ -263,9 +268,9 @@ def maf_writer(out): # DictWriter
   def write_header(vcf_in):
     out.writeheader()
 
-  def write_variant(variant, snv_context, surrounding_context, tx_strand):
-    if snv_context is not None:
-      variant.row["snv_context"] = snv_context
+  def write_variant(variant, sig_context, surrounding_context, tx_strand):
+    if sig_context is not None:
+      variant.row["sig_context"] = sig_context
     if surrounding_context is not None:
       variant.row["surrounding"] = surrounding_context
     if tx_strand is not None:
@@ -299,7 +304,7 @@ if __name__ == '__main__':
 
   if args.is_maf:
     vcf_in = maf_to_vcf(args.vcf, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column)
-    writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['snv_context', 'surrounding', 'tx_strand'])
+    writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['sig_context', 'surrounding', 'tx_strand'])
     vcf_out = maf_writer(writer)
     annotate(open(args.genome, 'r'), vcf_in['maf_reader'], vcf_out, sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts)
   else:

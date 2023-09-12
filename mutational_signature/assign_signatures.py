@@ -94,7 +94,7 @@ def plot_sbs_signature(vals, target, contexts, sigs):
 
   plt.savefig(target, dpi=DPI)
 
-def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, plot, vcf_out, signatures_of_interest):
+def main(vcf, signatures, signatures_belief, definitions, artefacts, threshold, plot, vcf_out, signatures_of_interest):
   logging.info('starting...')
   # signatures:
   # SBS1    0.234
@@ -116,29 +116,32 @@ def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, p
     for name in all_sigs:
       all_sigs[name] = uniform + (all_sigs[name] - uniform) * signatures_belief
     
-  # definition:
+  # sbs definition:
   # Sig     ACAA     ACAC     ACAG     ACAT     ACGA    
   # SBS1    8.86E-04 2.28E-03 1.77E-04 1.28E-03 1.86E-03
+  # indel definition:
+  # Sig     DEL_C_1_0       DEL_C_1_1       DEL_C_1_2...
   contexts = collections.defaultdict(list)
   sigs = {}
 
-  with open(definition, 'r') as def_fh:
-    header = def_fh.readline().strip('\n').split('\t')
-
-    for line in def_fh:
-      fields = line.strip('\n').split('\t')
-      if fields[0] in all_sigs or signatures is None:
-        if signatures is None:
-          sigs[fields[0]] = 0.01 # uniform prior, will be normalised later
-        else:
-          sigs[fields[0]] = all_sigs[fields[0]]
-        # keep a map of context -> sigs
-        for ctx, context in enumerate(header[1:]):
-          if len(context) == 4 and '>' not in context:
-            context = '{}{}{}>{}'.format(context[0], context[1], context[3], context[2])
-          context_val = float(fields[ctx + 1]) # from definition
-          # signature percent (prior) * context percent
-          contexts[context].append((sigs[fields[0]] * context_val, fields[0])) # value, signature
+  for definition in definitions:
+    with open(definition, 'r') as def_fh:
+      header = def_fh.readline().strip('\n').split('\t')
+  
+      for line in def_fh:
+        fields = line.strip('\n').split('\t') # proportions for this signature
+        if fields[0] in all_sigs or signatures is None:
+          if signatures is None:
+            sigs[fields[0]] = 0.01 # sig prior - uniform prior, will be normalised later
+          else:
+            sigs[fields[0]] = all_sigs[fields[0]]
+          # keep a map of context -> sigs
+          for ctx, context in enumerate(header[1:]):
+            if len(context) == 4 and '>' not in context:
+              context = '{}{}{}>{}'.format(context[0], context[1], context[3], context[2])
+            context_val = float(fields[ctx + 1]) # from definition
+            # signature percent (prior) * context percent
+            contexts[context].append((sigs[fields[0]] * context_val, fields[0])) # context -> value, signature
   logging.info('%i signatures with value above %.2f', len(sigs), threshold)
 
   # Signature	Summary	Context
@@ -194,10 +197,10 @@ def main(vcf, signatures, signatures_belief, definition, artefacts, threshold, p
     for line, variant in enumerate(vcf):
       #logging.debug('processing line %i: %s...', line, variant)
       try:
-        context = variant.INFO["snv_context"]
+        context = variant.INFO["sig_context"]
       except:
         try:
-          context = variant.row["snv_context"]
+          context = variant.row["sig_context"]
         except:
           skipped_no_context += 1
           continue
@@ -305,7 +308,7 @@ if __name__ == '__main__':
   parser.add_argument('--signatures', required=False, help='calculated signatures used as prior')
   parser.add_argument('--signatures_of_interest', required=False, nargs='+', help='signature names to include')
   parser.add_argument('--signatures_belief', required=False, default=1, type=float, help='how much to believe new signatures')
-  parser.add_argument('--definition', required=True, help='signature definition')
+  parser.add_argument('--definitions', required=True, nargs='+', help='signature definitions')
   parser.add_argument('--artefacts', required=False, help='artefacts')
   parser.add_argument('--threshold', required=False, default=0, type=float, help='minimum value signature and posterior probability')
   parser.add_argument('--verbose', action='store_true', help='more logging')
@@ -322,7 +325,7 @@ if __name__ == '__main__':
     else:
       writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['signature_likelihood', 'signature_artefact'])
     vcf_out = maf_writer(writer)
-    main(vcf_in['maf_reader'], args.signatures, args.signatures_belief, args.definition, args.artefacts, args.threshold, args.plot, vcf_out, args.signatures_of_interest)
+    main(vcf_in['maf_reader'], args.signatures, args.signatures_belief, args.definitions, args.artefacts, args.threshold, args.plot, vcf_out, args.signatures_of_interest)
   else:
     vcf_in = cyvcf2.VCF(args.vcf)
-    main(vcf_in, args.signatures, args.signatures_belief, args.definition, args.artefacts, args.threshold, args.plot, vcf_writer(sys.stdout), args.signatures_of_interest)
+    main(vcf_in, args.signatures, args.signatures_belief, args.definitions, args.artefacts, args.threshold, args.plot, vcf_writer(sys.stdout), args.signatures_of_interest)

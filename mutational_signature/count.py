@@ -89,6 +89,97 @@ def no_chr(chrom):
   # deals with chrUn_gl000220.1
   return chrom.split('.')[0].split('_', maxsplit=1)[-1].replace('chr', '').upper()
 
+def get_indel_category(variant, chroms):
+  category = {}
+  del_length = len(variant.REF) - len(variant.ALT[0]) # -ve for insertions
+  # indel can be INS or DEL
+  if del_length > 0:
+    category['category'] = 'DEL'
+  else:
+    category['category'] = 'INS'
+
+  # length can be 1 2 3 4 5+
+  if abs(del_length) >= 5:
+    category['length'] = '5+'
+  else:
+    category['length'] = abs(del_length)
+
+  # measure repeat length
+  repeats = 0
+  if del_length > 0: # deletion
+    if len(variant.ALT[0]) == 0:
+      # deletions look like TA -> - e.g. in TCGA
+      deleted_sequence = variant.REF
+    else:  
+      # deletions look like TAAA -> T POS is where the T is
+      deleted_sequence = variant.REF[len(variant.ALT[0]):]
+    logging.debug('deleted sequence is %s from %s to %s', deleted_sequence, variant.REF, variant.ALT[0])
+    # first look for ongoing repeated sequence. POS-1 puts us at the T
+    current_pos = variant.POS + len(variant.ALT[0]) - 1 + len(deleted_sequence)
+    while chroms[no_chr(variant.CHROM)][current_pos:current_pos + len(deleted_sequence)] == deleted_sequence:
+      current_pos += len(deleted_sequence)
+      repeats += 1
+      if repeats > 10000:
+        break
+
+    if del_length == 1:
+      category['repeats'] = '5+' if repeats >= 5 else repeats
+      category['content'] = INDEL_COMP[deleted_sequence]
+    else: # del length > 1
+      if repeats == 0:
+        # measure microhomology if deletion is not repeat
+        microhomology = 0
+        # first look to the right
+        for pos in range(0, len(deleted_sequence)):
+          if chroms[no_chr(variant.CHROM)][variant.POS + len(variant.ALT[0]) - 1 + len(deleted_sequence) + pos] == deleted_sequence[pos]:
+            microhomology += 1
+          else:
+            break
+        # now look to the left
+        for pos in range(len(deleted_sequence) - 1, -1, -1):
+          if chroms[no_chr(variant.CHROM)][variant.POS + len(variant.ALT[0]) - 1 - len(deleted_sequence) + pos] == deleted_sequence[pos]:
+            microhomology += 1
+          else:
+            break
+
+        if microhomology >= del_length:
+          logging.warning('Microhomology calculation went wrong at %s:%i %i del length %i del sequence %s', no_chr(variant.CHROM), variant.POS, microhomology, del_length, deleted_sequence)
+        
+        if microhomology > 0:
+          category['repeats'] = '5+' if microhomology >= 5 else microhomology
+          category['content'] = 'MH'
+        else:
+          category['repeats'] = 0
+          category['content'] = 'repeats'
+      else:
+        category['repeats'] = '5+' if repeats >= 5 else repeats
+        category['content'] = 'repeats'
+
+  else: # insertion
+    if len(variant.REF) == 0:
+      # ref used to be -
+      inserted_sequence = variant.ALT[0]
+    else:
+      # insertions look like G -> GCA. POS is where the G is
+      inserted_sequence = variant.ALT[0][len(variant.REF):]
+    current_pos = variant.POS + len(variant.REF) - 1
+    while chroms[no_chr(variant.CHROM)][current_pos:current_pos + len(inserted_sequence)] == inserted_sequence:
+      current_pos += len(inserted_sequence)
+      repeats += 1
+      if repeats > 10000:
+        break
+    category['repeats'] = '5+' if repeats >= 5 else repeats
+    if del_length == -1:
+      if inserted_sequence not in INDEL_COMP:
+        logging.warn('unexpected inserted sequence %s', inserted_sequence)
+        category['content'] = 'unknown'
+      else:
+        category['content'] = INDEL_COMP[inserted_sequence]
+    else: # insertion length > 1
+      category['content'] = 'repeats'
+
+  return category
+
 def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_indels, transcripts=None, exons=None, tx_counts=None, mer=3, weight=None):
   if no_chr(variant.CHROM) not in chroms:
     logging.warning('chromosome %s not found in chroms: %s', no_chr(variant.CHROM), chroms.keys())
@@ -134,95 +225,7 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
   logging.debug('weight is %s', count_weight)
 
   if indels and len(variant.REF) != len(variant.ALT[0]):
-    category = {}
-
-    del_length = len(variant.REF) - len(variant.ALT[0]) # -ve for insertions
-    # indel can be INS or DEL
-    if del_length > 0:
-      category['category'] = 'DEL'
-    else:
-      category['category'] = 'INS'
-
-    # length can be 1 2 3 4 5+
-    if abs(del_length) >= 5:
-      category['length'] = '5+'
-    else:
-      category['length'] = abs(del_length)
-
-    # measure repeat length
-    repeats = 0
-    if del_length > 0: # deletion
-      if len(variant.ALT[0]) == 0:
-        # deletions look like TA -> - e.g. in TCGA
-        deleted_sequence = variant.REF
-      else:  
-        # deletions look like TAAA -> T POS is where the T is
-        deleted_sequence = variant.REF[len(variant.ALT[0]):]
-      logging.debug('deleted sequence is %s from %s to %s', deleted_sequence, variant.REF, variant.ALT[0])
-      # first look for ongoing repeated sequence. POS-1 puts us at the T
-      current_pos = variant.POS + len(variant.ALT[0]) - 1 + len(deleted_sequence)
-      while chroms[no_chr(variant.CHROM)][current_pos:current_pos + len(deleted_sequence)] == deleted_sequence:
-        current_pos += len(deleted_sequence)
-        repeats += 1
-        if repeats > 10000:
-          break
-
-      if del_length == 1:
-        category['repeats'] = '5+' if repeats >= 5 else repeats
-        category['content'] = INDEL_COMP[deleted_sequence]
-      else: # del length > 1
-        if repeats == 0:
-          # measure microhomology if deletion is not repeat
-          microhomology = 0
-          # first look to the right
-          for pos in range(0, len(deleted_sequence)):
-            if chroms[no_chr(variant.CHROM)][variant.POS + len(variant.ALT[0]) - 1 + len(deleted_sequence) + pos] == deleted_sequence[pos]:
-              microhomology += 1
-            else:
-              break
-          # now look to the left
-          for pos in range(len(deleted_sequence) - 1, -1, -1):
-            if chroms[no_chr(variant.CHROM)][variant.POS + len(variant.ALT[0]) - 1 - len(deleted_sequence) + pos] == deleted_sequence[pos]:
-              microhomology += 1
-            else:
-              break
-
-          if microhomology >= del_length:
-            logging.warning('Microhomology calculation went wrong at %s:%i %i del length %i del sequence %s', no_chr(variant.CHROM), variant.POS, microhomology, del_length, deleted_sequence)
-          
-          if microhomology > 0:
-            category['repeats'] = '5+' if microhomology >= 5 else microhomology
-            category['content'] = 'MH'
-          else:
-            category['repeats'] = 0
-            category['content'] = 'repeats'
-        else:
-          category['repeats'] = '5+' if repeats >= 5 else repeats
-          category['content'] = 'repeats'
-
-    else: # insertion
-      if len(variant.REF) == 0:
-        # ref used to be -
-        inserted_sequence = variant.ALT[0]
-      else:
-        # insertions look like G -> GCA. POS is where the G is
-        inserted_sequence = variant.ALT[0][len(variant.REF):]
-      current_pos = variant.POS + len(variant.REF) - 1
-      while chroms[no_chr(variant.CHROM)][current_pos:current_pos + len(inserted_sequence)] == inserted_sequence:
-        current_pos += len(inserted_sequence)
-        repeats += 1
-        if repeats > 10000:
-          break
-      category['repeats'] = '5+' if repeats >= 5 else repeats
-      if del_length == -1:
-        if inserted_sequence not in INDEL_COMP:
-          logging.warn('unexpected inserted sequence %s', inserted_sequence)
-          category['content'] = 'unknown'
-        else:
-          category['content'] = INDEL_COMP[inserted_sequence]
-      else: # insertion length > 1
-        category['content'] = 'repeats'
-
+    category = get_indel_category(variant, chroms)
     indel_category = '{category}_{content}_{length}_{repeats}'.format(**category)
     counts[indel_category] += count_weight
     #logging.debug('indel at %s:%s %s -> %s classified as %s', no_chr(variant.CHROM), variant.POS, variant.REF, variant.ALT[0], indel_category)
