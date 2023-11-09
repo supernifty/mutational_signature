@@ -73,8 +73,11 @@ def update_chroms(required, chroms, genome, next_chrom):
   logging.info('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
   return None
 
-def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False, context_length=1, contexts_fh=None, contexts_of_interest=None):
+def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False, context_length=1, contexts_fh=None, contexts_of_interest=None, custom=None):
   if pos <= context_length or pos > len(chroms[chrom]) - context_length:
+    logging.info('skipped edge variant at %s:%i', chrom, pos)
+    return
+  if custom is not None and 'pks' in custom and pos <= 4 or pos > len(chroms[chrom]) - 4:
     logging.info('skipped edge variant at %s:%i', chrom, pos)
     return
 
@@ -179,11 +182,11 @@ def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, d
   fragment = chroms[chrom][pos - 1 - context_length:pos + context_length].upper() # potentially could instead skip lower case
   if any([x not in 'ACGTacgt' for x in fragment]):
     return
-  v = '{}>{}'.format(fragment, 'A') # G is dummy
-  v = normalize_sbs(v, context_length)[:(2 * context_length + 1)] # just the context
-  counts[v] += 1
-  if contexts_fh is not None and (contexts_of_interest is None or v in contexts_of_interest):
-    contexts_fh.write('{}\t{}\t{}\t{}\n'.format(chrom, pos, chroms[chrom][pos], v))
+  sbs_ctx = '{}>{}'.format(fragment, 'A') # G is dummy
+  sbs_ctx = normalize_sbs(sbs_ctx, context_length)[:(2 * context_length + 1)] # just the context
+  counts[sbs_ctx] += 1
+  if contexts_fh is not None and (contexts_of_interest is None or sbs_ctx in contexts_of_interest):
+    contexts_fh.write('{}\t{}\t{}\t{}\n'.format(chrom, pos, chroms[chrom][pos], sbs_ctx))
 
   # --- doublets
   if doublets:
@@ -198,10 +201,43 @@ def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, d
           contexts_fh.write('{}\t{}\t{}\t{}\n'.format(chrom, pos, chroms[chrom][pos], doublet))
         logging.debug('doublet found at %s:%s: %s', variant.CHROM, variant.POS, doublet)
 
+  if custom is not None:
+    for tag in custom:
+      if tag == 'pks':
+        # looking for AA..T
+        if chroms[chrom][pos] == 'T':
+          if chroms[chrom][pos-4] == 'A' and chroms[chrom][pos-3] == 'A':
+            pks_context = 'A A'
+          elif chroms[chrom][pos-4] != 'A' and chroms[chrom][pos-3] == 'A':
+            pks_context = 'A x'
+          elif chroms[chrom][pos-4] == 'A' and chroms[chrom][pos-3] != 'A':
+            pks_context = 'x A'
+          else:
+            continue
+          if contexts_fh is not None:
+            contexts_fh.write('{}\t{}\t{}\t{}\n'.format(chrom, pos, chroms[chrom][pos], pks_context)) # -4 -3
+          counts['pks_T>n_{}'.format(pks_context)] += 1
+          counts['pks_{}_{}'.format(sbs_ctx, pks_context)] += 1
+
+        # reverse complement version
+        if chroms[chrom][pos] == 'A': 
+          if chroms[chrom][pos+4] == 'T' and chroms[chrom][pos+3] == 'T':
+            pks_context = 'A A'
+          elif chroms[chrom][pos+4] != 'T' and chroms[chrom][pos+3] == 'T':
+            pks_context = 'A x'
+          elif chroms[chrom][pos+4] == 'T' and chroms[chrom][pos+3] != 'T':
+            pks_context = 'x A'
+          else:
+            continue
+          if contexts_fh is not None:
+            contexts_fh.write('{}\t{}\t{}\tpks_T>n_{}\n'.format(chrom, pos, chroms[chrom][pos], pks_context)) # -3 -4
+          counts['pks_T>n_{}'.format(pks_context)] += 1
+          counts['pks_{}_{}'.format(sbs_ctx, pks_context)] += 1
+
 def count_bulk(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False, context_length=1, write_contexts=None, contexts_of_interest=None):
   pass
 
-def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False, context_length=1, write_contexts=None, contexts_of_interest=None):
+def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False, context_length=1, write_contexts=None, contexts_of_interest=None, custom=None):
   logging.info('processing %s...', bed)
 
   if chroms is None:
@@ -218,7 +254,7 @@ def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=Fal
   write_fh = None
   if write_contexts is not None:
     write_fh = open(write_contexts, 'w')
-    contexts_of_interest = set(contexts_of_interest)
+    #contexts_of_interest = set(contexts_of_interest)
 
   for idx, line in enumerate(open(bed, 'r')):
     fields = line.strip('\n').split('\t')
@@ -235,7 +271,7 @@ def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=Fal
 
     for pos in range(start, finish):
       #def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False, context_length=1):
-      update_counts(counts, chrom, pos, chroms, context_length=context_length, contexts_fh=write_fh, contexts_of_interest=contexts_of_interest)
+      update_counts(counts, chrom, pos, chroms, context_length=context_length, contexts_fh=write_fh, contexts_of_interest=contexts_of_interest, custom=custom)
 
     if (idx + 1) % 100 == 0:
       logging.debug('processed %i lines. current counts: %s...', idx + 1, ' '.join(['{}:{}'.format(k, counts[k]) for k in counts]))
@@ -278,6 +314,7 @@ if __name__ == '__main__':
   parser.add_argument('--bed', required=True, help='regions to consider')
   parser.add_argument('--indels', action='store_true', help='consider indels') # not supported
   parser.add_argument('--doublets', action='store_true', help='consider doublets') # not supported
+  parser.add_argument('--custom', required=False, nargs='+', help='additional customs e.g. pks') 
   parser.add_argument('--context_length', required=False, default=1, type=int, help='how far to go from mutation in each direction') 
   parser.add_argument('--write_contexts', required=False, help='write chrom pos ref for matching')
   parser.add_argument('--contexts_of_interest', required=False, nargs='*', help='contexts of interest')
@@ -287,4 +324,4 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
-  count(genome_fh=open(args.genome, 'r'), bed=args.bed, out=sys.stdout, context_length=args.context_length, write_contexts=args.write_contexts, contexts_of_interest=args.contexts_of_interest)
+  count(genome_fh=open(args.genome, 'r'), bed=args.bed, out=sys.stdout, context_length=args.context_length, write_contexts=args.write_contexts, contexts_of_interest=args.contexts_of_interest, custom=args.custom)

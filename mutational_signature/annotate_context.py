@@ -26,6 +26,10 @@ def normalize(v):
     return v # ok
   else:
     return ''.join([COMP[v[2]], COMP[v[1]], COMP[v[0]], '>', COMP[v[4]]])
+
+RC = {'a': 't', 'c': 'g', 't': 'a', 'g': 'c', 'n': 'n', 'A': 'T', 'C': 'G', 'T': 'A', 'G': 'C', 'N': 'N'}
+def reverse_complement(r):
+  return ''.join([RC[x] for x in r][::-1])
     
 def update_chroms(required, chroms, genome, next_chrom):
   '''
@@ -61,14 +65,14 @@ def update_chroms(required, chroms, genome, next_chrom):
 def context(variant, chroms):
   chrom = variant.CHROM.replace('chr', '')
   if chrom not in chroms:
-    logging.info('skipping chromosome %s', chrom)
+    logging.info('context: skipping chromosome %s', chrom)
     return None
   if variant.POS == 1 or variant.POS > len(chroms[chrom]):
-    logging.info('skipped edge variant at %s:%i', chrom, variant.POS)
+    logging.info('context: skipped edge variant at %s:%i', chrom, variant.POS)
     return None
-  if len(variant.REF) != 1 or len(variant.ALT) == 0 or len(variant.ALT[0]) != 1:
+  if len(variant.REF) != 1 or len(variant.ALT) == 0 or len(variant.ALT[0]) != 1 or variant.ALT[0] == '-':
     # indel context!
-    logging.debug('indel at %s:%i', chrom, variant.POS)
+    logging.debug('context: indel at %s:%i', chrom, variant.POS)
     category = mutational_signature.count.get_indel_category(variant, chroms)
     indel_category = '{category}_{content}_{length}_{repeats}'.format(**category)
     return indel_category
@@ -77,13 +81,13 @@ def context(variant, chroms):
   # 1 2 3 -> vcf indexes
   fragment = chroms[chrom][variant.POS - 2:variant.POS + 1].upper() # TODO should we instead skip lower case
   if fragment[1] != variant.REF:
-    logging.warn('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', chrom, variant.POS, variant.REF, fragment[0], fragment[1], fragment[2])
+    logging.warn('context: skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', chrom, variant.POS, variant.REF, fragment[0], fragment[1], fragment[2])
     return
 
   if any([x not in 'ACGT' for x in ''.join([fragment, variant.ALT[0]])]):
-    logging.warn('skipping variant with ill-defined transition {}>{} at {}:{}'.format(fragment, variant.ALT[0], chrom, variant.POS))
+    logging.warn('context: skipping variant with ill-defined transition {}>{} at {}:{}'.format(fragment, variant.ALT[0], chrom, variant.POS))
     return
-    
+
   v = '{}>{}'.format(fragment, variant.ALT[0]) # TODO multiallele
   v = normalize(v)
   return v
@@ -94,17 +98,17 @@ def surrounding(variant, sequence, chroms):
     return None
   chrom = variant.CHROM.replace('chr', '')
   if chrom not in chroms:
-    logging.info('skipping chromosome %s', chrom)
+    logging.info('surrounding: skipping chromosome %s', chrom)
     return None
   if variant.POS < sequence or variant.POS > len(chroms[chrom]) - sequence:
-    logging.info('skipped edge variant at %s:%i', chrom, variant.POS)
+    logging.info('surrounding: skipped edge variant at %s:%i', chrom, variant.POS)
     return None
 
   # 0 1 2 -> my indexes
   # 1 2 3 -> vcf indexes
   fragment = chroms[chrom][variant.POS - sequence - 1:variant.POS + sequence + len(variant.REF) - 1].upper() # TODO should we instead skip lower case
   if fragment[sequence:sequence + len(variant.REF)] != variant.REF:
-    logging.warn('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s', chrom, variant.POS, variant.REF, fragment)
+    logging.warn('surrounding: skipping variant with position mismatch at %s:%i: VCF: %s genome: %s', chrom, variant.POS, variant.REF, fragment)
     return
 
   return fragment
@@ -113,11 +117,11 @@ def vcf_writer(out):
   def write_header(vcf_in):
     out.write(vcf_in.raw_header)
 
-  def write_variant(variant, sig_context, surrounding_context, tx_strand):
+  def write_variant(variant, sig_context, surrounding_context, tx_strand, sequence_name):
     if sig_context is not None:
       variant.INFO["sig_context"] = sig_context
     if surrounding_context is not None:
-      variant.INFO["surrounding"] = surrounding_context
+      variant.INFO[sequence_name] = surrounding_context
     if tx_strand is not None:
       variant.INFO["tx_strand"] = tx_strand
     out.write(str(variant))
@@ -165,7 +169,7 @@ def read_transcripts(transcripts):
   logging.info('reading %s: done with %i exon bases and %i tx bases', transcripts, bases, txbases)
   return txtree, tree
 
-def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequence=0, plot=None, transcripts_fn=None):
+def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequence=0, plot=None, transcripts_fn=None, sequence_name=None):
   logging.info('processing...')
 
   if chroms is None:
@@ -181,7 +185,7 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
   #vcf_in = cyvcf2.VCF(vcf)
   out['add_to_header']({'ID': 'sig_context', 'Description': 'mutational signature trinucleotide context', 'Type':'Character', 'Number': '1'})
   if sequence > 0:
-    out['add_to_header']({'ID': 'surrounding', 'Description': 'reference sequence surrounding variant', 'Type':'Character', 'Number': '1'})
+    out['add_to_header']({'ID': sequence_name, 'Description': 'reference sequence surrounding variant', 'Type':'Character', 'Number': '1'})
   out['write_header'](vcf_in)
 
   if transcripts_fn is not None:
@@ -220,7 +224,7 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
     else:
       tx_strand = None
 
-    out['write_variant'](variant, sig_context, surrounding_context, tx_strand)
+    out['write_variant'](variant, sig_context, surrounding_context, tx_strand, sequence_name)
 
     if (line + 1) % 10000 == 0:
       logging.debug('processed %i lines...', line + 1)
@@ -247,7 +251,7 @@ def maf_to_vcf(maf, chrom_col, pos_col, ref_col, alt_col):
       if line % 1000 == 0:
         logging.debug('processed %i lines of %s...', line, maf)
   
-      if '/' in chrom_col:
+      if '/' in chrom_col or '-' in chrom_col or ':' in chrom_col:
         chrom = row 
       chrom = maf_value(chrom_col, row)
       pos = int(maf_value(pos_col, row))
@@ -268,11 +272,11 @@ def maf_writer(out): # DictWriter
   def write_header(vcf_in):
     out.writeheader()
 
-  def write_variant(variant, sig_context, surrounding_context, tx_strand):
+  def write_variant(variant, sig_context, surrounding_context, tx_strand, sequence_name):
     if sig_context is not None:
       variant.row["sig_context"] = sig_context
     if surrounding_context is not None:
-      variant.row["surrounding"] = surrounding_context
+      variant.row[sequence_name] = surrounding_context
     if tx_strand is not None:
       variant.row["tx_strand"] = tx_strand
     out.writerow(variant.row)
@@ -287,6 +291,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--sequence', required=False, default=0, type=int, help='surrounding sequence in each direction to annotate, 0 to skip')
+  parser.add_argument('--sequence_name', required=False, default='surrounding', help='surrounding sequence field name')
   parser.add_argument('--vcf', required=True, help='vcf')
   parser.add_argument('--is_maf', action='store_true', help='vcf is a maf')
   parser.add_argument('--maf_chrom_column', required=False, default='Chromosome', help='maf chrom column name')
@@ -304,9 +309,9 @@ if __name__ == '__main__':
 
   if args.is_maf:
     vcf_in = maf_to_vcf(args.vcf, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column)
-    writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['sig_context', 'surrounding', 'tx_strand'])
+    writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['sig_context', args.sequence_name, 'tx_strand'])
     vcf_out = maf_writer(writer)
-    annotate(open(args.genome, 'r'), vcf_in['maf_reader'], vcf_out, sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts)
+    annotate(open(args.genome, 'r'), vcf_in['maf_reader'], vcf_out, sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts, sequence_name=args.sequence_name)
   else:
     vcf_in = cyvcf2.VCF(args.vcf)
-    annotate(open(args.genome, 'r'), vcf_in, vcf_writer(sys.stdout), sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts)
+    annotate(open(args.genome, 'r'), vcf_in, vcf_writer(sys.stdout), sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts, sequence_name=args.sequence_name)

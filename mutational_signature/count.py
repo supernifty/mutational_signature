@@ -91,7 +91,11 @@ def no_chr(chrom):
 
 def get_indel_category(variant, chroms):
   category = {}
-  del_length = len(variant.REF) - len(variant.ALT[0]) # -ve for insertions
+  # tcga/intogen put - in the alt
+  alt = variant.ALT[0]
+  if alt == '-':
+    alt = ''
+  del_length = len(variant.REF) - len(alt) # -ve for insertions
   # indel can be INS or DEL
   if del_length > 0:
     category['category'] = 'DEL'
@@ -107,15 +111,15 @@ def get_indel_category(variant, chroms):
   # measure repeat length
   repeats = 0
   if del_length > 0: # deletion
-    if len(variant.ALT[0]) == 0:
+    if len(alt) == 0:
       # deletions look like TA -> - e.g. in TCGA
       deleted_sequence = variant.REF
     else:  
       # deletions look like TAAA -> T POS is where the T is
-      deleted_sequence = variant.REF[len(variant.ALT[0]):]
-    logging.debug('deleted sequence is %s from %s to %s', deleted_sequence, variant.REF, variant.ALT[0])
+      deleted_sequence = variant.REF[len(alt):]
+    logging.debug('deleted sequence is %s from %s to %s', deleted_sequence, variant.REF, alt)
     # first look for ongoing repeated sequence. POS-1 puts us at the T
-    current_pos = variant.POS + len(variant.ALT[0]) - 1 + len(deleted_sequence)
+    current_pos = variant.POS + len(alt) - 1 + len(deleted_sequence)
     while chroms[no_chr(variant.CHROM)][current_pos:current_pos + len(deleted_sequence)] == deleted_sequence:
       current_pos += len(deleted_sequence)
       repeats += 1
@@ -131,13 +135,13 @@ def get_indel_category(variant, chroms):
         microhomology = 0
         # first look to the right
         for pos in range(0, len(deleted_sequence)):
-          if chroms[no_chr(variant.CHROM)][variant.POS + len(variant.ALT[0]) - 1 + len(deleted_sequence) + pos] == deleted_sequence[pos]:
+          if chroms[no_chr(variant.CHROM)][variant.POS + len(alt) - 1 + len(deleted_sequence) + pos] == deleted_sequence[pos]:
             microhomology += 1
           else:
             break
         # now look to the left
         for pos in range(len(deleted_sequence) - 1, -1, -1):
-          if chroms[no_chr(variant.CHROM)][variant.POS + len(variant.ALT[0]) - 1 - len(deleted_sequence) + pos] == deleted_sequence[pos]:
+          if chroms[no_chr(variant.CHROM)][variant.POS + len(alt) - 1 - len(deleted_sequence) + pos] == deleted_sequence[pos]:
             microhomology += 1
           else:
             break
@@ -158,10 +162,10 @@ def get_indel_category(variant, chroms):
   else: # insertion
     if len(variant.REF) == 0:
       # ref used to be -
-      inserted_sequence = variant.ALT[0]
+      inserted_sequence = alt
     else:
       # insertions look like G -> GCA. POS is where the G is
-      inserted_sequence = variant.ALT[0][len(variant.REF):]
+      inserted_sequence = alt[len(variant.REF):]
     current_pos = variant.POS + len(variant.REF) - 1
     while chroms[no_chr(variant.CHROM)][current_pos:current_pos + len(inserted_sequence)] == inserted_sequence:
       current_pos += len(inserted_sequence)
@@ -224,16 +228,16 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     count_weight = variant.INFO[weight] # let's hope for a float
   logging.debug('weight is %s', count_weight)
 
-  if indels and len(variant.REF) != len(variant.ALT[0]):
+  if indels and len(variant.REF) != len(alt):
     category = get_indel_category(variant, chroms)
     indel_category = '{category}_{content}_{length}_{repeats}'.format(**category)
     counts[indel_category] += count_weight
-    #logging.debug('indel at %s:%s %s -> %s classified as %s', no_chr(variant.CHROM), variant.POS, variant.REF, variant.ALT[0], indel_category)
+    #logging.debug('indel at %s:%s %s -> %s classified as %s', no_chr(variant.CHROM), variant.POS, variant.REF, alt, indel_category)
     if indel_category not in INDELS:
       logging.warning('unexpected indel category %s', indel_category)
 
   # no need to look at this indel any more
-  if len(variant.REF) != 1 or len(variant.ALT[0]) != 1:
+  if len(variant.REF) != 1 or len(alt) != 1:
     if not indels:
       logging.debug('skipped indel at %s:%i', no_chr(variant.CHROM), variant.POS)
     return
@@ -251,11 +255,11 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     logging.warning('skipping variant with position mismatch at %s:%i: VCF: %s genome: %s[%s]%s', no_chr(variant.CHROM), variant.POS, variant.REF, fragment[0], fragment[1], fragment[2])
     return
 
-  if any([x not in 'ACGT' for x in ''.join([fragment, variant.ALT[0]])]):
-    logging.warning('skipping variant with ill-defined transition {}>{} at {}:{}'.format(fragment, variant.ALT[0], no_chr(variant.CHROM), variant.POS))
+  if any([x not in 'ACGT' for x in ''.join([fragment, alt])]):
+    logging.warning('skipping variant with ill-defined transition {}>{} at {}:{}'.format(fragment, alt, no_chr(variant.CHROM), variant.POS))
     return
     
-  v = '{}>{}'.format(fragment, variant.ALT[0]) # TODO multiallele
+  v = '{}>{}'.format(fragment, alt) # TODO multiallele
   v, tx_strand, exon_strand = normalize_sbs(v, tx_strand, exon_strand)
   counts[v] += count_weight
   if tx_strand is not None:
@@ -266,7 +270,7 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
   # --- doublets
   if doublets:
     if last_variant is not None and no_chr(last_variant.CHROM) == no_chr(variant.CHROM) and last_variant.POS == variant.POS - 1:
-      doublet = '{}{}>{}{}'.format(last_variant.REF, variant.REF, last_variant.ALT[0], variant.ALT[0])
+      doublet = '{}{}>{}{}'.format(last_variant.REF, variant.REF, last_variant.ALT[0], alt) # TODO ALT[0] could be weird if '-' ?
       if len(doublet) != 5:
         logging.warning('skipping doublet %s at %s:%i', doublet, no_chr(variant.CHROM), variant.POS)
       else:
