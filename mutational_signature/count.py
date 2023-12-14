@@ -193,6 +193,11 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     logging.debug('skipped edge variant at %s:%i', no_chr(variant.CHROM), variant.POS)
     return
 
+  # tcga/intogen put - in the alt
+  alt = variant.ALT[0]
+  if alt == '-':
+    alt = ''
+
   exon_strand = None
   tx_strand = None
 
