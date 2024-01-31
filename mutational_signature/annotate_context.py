@@ -298,6 +298,7 @@ def maf_writer(out): # DictWriter
       variant.row[sequence_name] = surrounding_context
     if tx_strand is not None:
       variant.row["tx_strand"] = tx_strand
+    logging.debug('%s', variant.row)
     out.writerow(variant.row)
 
   def dummy(d):
