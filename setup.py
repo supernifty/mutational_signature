@@ -4,8 +4,8 @@ import setuptools
 import pathlib
 
 name = "mutational_signature"
-version = "0.4"
-release = "0.4.0"
+version = "0.9"
+release = "0.9.0"
 here = pathlib.Path(__file__).parent.resolve()
 
 setuptools.setup(
