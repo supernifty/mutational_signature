@@ -4,6 +4,6 @@ cyvcf2
 intervaltree
 matplotlib
 numpy
-scipy
+scikit-learn
 sklearn
 git+https://github.com/supernifty/plotme

@@ -46,7 +46,7 @@ python plot_components.py --threshold 0.0 --show_signature --target out.png --or
 
 Convert a downloaded signature file from COSMIC to format for this software
 ```
-python mutational_signature/convert.py --conversion sbs < ~/sigProfiler_SBS_TCGA_WES_ColoRect-AdenoCa_local_signatures.csv > data/wes-crc.csv
+python mutational_signature/convert.py --conversion sbs32 < ~/sigProfiler_SBS_TCGA_WES_ColoRect-AdenoCa_local_signatures.csv > data/wes-crc.csv
 ```
 
 Compare sets of signatures for similarity:
