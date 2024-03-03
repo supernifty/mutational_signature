@@ -59,7 +59,7 @@ SBS50	Artefact	ACC>AAC
 SBS51	Artefact	ACA>AAA
 SBS52	Artefact	TCA>TAA
 SBS53	Artefact	CCA>CAA
-SBS54	Artefact germline contamination	ATG>ACG; possible MMRd
+SBS54	Artefact germline contamination; possible MMRd	ATG>ACG
 SBS55	Artefact	GTG>GGG
 SBS56	Artefact	TCT>TAT
 SBS57	Artefact	TTT>TCT
