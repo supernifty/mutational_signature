@@ -139,6 +139,7 @@ def basin_hopping_solver(A, b, metric, max_sigs):
  
   # solve with basinhopping
   bounds=[(0.0, np.inf)] * len(x0)
+  logging.debug('bounds: %s', bounds)
   minimizer_kwargs = dict(method="L-BFGS-B", bounds=bounds)
   result = scipy.optimize.basinhopping(make_distance(A, b, metric), x0, minimizer_kwargs=minimizer_kwargs, stepsize=5, T=5).x
 

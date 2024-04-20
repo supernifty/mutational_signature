@@ -448,8 +448,8 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
       nonCodingExon = tx_counts['{}|{}'.format(k, '-')]
 
       out.write('{}\t{}\t{:.6f}\t{}\t{}\t{:.6f}\t{}\t{}\t{:.6f}\n'.format(k, counts[k], counts[k] / total_count, 
-        codingTx, nonCodingTx, scipy.stats.binom_test([codingTx, nonCodingTx]),
-        codingExon, nonCodingExon, scipy.stats.binom_test([codingExon, nonCodingExon])))
+        codingTx, nonCodingTx, scipy.stats.binomtest(k=codingTx, n=max(1, codingTx + nonCodingTx)).pvalue,
+        codingExon, nonCodingExon, scipy.stats.binomtest(k=codingExon, n=max(1, codingExon + nonCodingExon)).pvalue))
 
     # add zero results for SBS
     context_extension = int((mer - 1) / 2) # 3 -> 1, 5 -> 2, etc
