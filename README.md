@@ -108,6 +108,7 @@ python mutational_signature/simulate.py --verbose --n 1 --sigdefs data/signature
 * combine_counts: for multiple count files, combine into a single tsv
 * combine_signatures: for multiple signature files, combine into a single tsv
 * compare_signatures: measures cosine similarity between input signatures
+* context_best_sig: find the signature with the highest proportion for each context
 * count_indels: counts indels in repeat regions using a an annotated bed file
 * count_maf: counts SNVs in context from a maf file
 * count: counts SNVs in context from a VCF file
