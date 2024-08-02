@@ -10,7 +10,7 @@ import logging
 import operator
 import sys
 
-def main(ifh, ofh):
+def main(ifh, ofh, ranks):
   logging.info('starting...')
   
   ctxs = collections.defaultdict(dict)
@@ -21,17 +21,27 @@ def main(ifh, ofh):
       ctxs[c][s] = cands[c]
     
   # figure highest for each ctx
-  odw = csv.DictWriter(ofh, delimiter='\t', fieldnames=['context', 'sig', 'proportion'])
+  fieldnames = ['context']
+  for i in range(ranks):
+    fieldnames.extend(['sig{}'.format(i+1), 'proportion{}'.format(i+1)])
+  odw = csv.DictWriter(ofh, delimiter='\t', fieldnames=fieldnames)
   odw.writeheader()
   for c in ctxs:
-    cands = ctxs[c]
-    best = max(cands.items(), key=operator.itemgetter(1))
-    odw.writerow({'context': c, 'sig': best[0], 'proportion': best[1]})
+    total = sum([ctxs[c][s] for s in ctxs[c]])
+    logging.debug('total is %.3f', total)
+    cands = ctxs[c] # {'sig': prop...}
+    bests = sorted(cands, key=cands.get)[::-1]
+    o = {'context': c}
+    for i in range(ranks):
+      o['sig{}'.format(i+1)] = bests[i]
+      o['proportion{}'.format(i+1)] = '{:.6f}'.format(cands[bests[i]] / total)
+    odw.writerow(o)
 
   logging.info('done')
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Assess MSI')
+  parser.add_argument('--ranks', type=int, required=False, default=1, help='how many to show')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -39,5 +49,5 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  main(sys.stdin, sys.stdout)
+  main(sys.stdin, sys.stdout, args.ranks)
 
