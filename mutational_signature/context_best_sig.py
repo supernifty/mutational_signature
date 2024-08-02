@@ -10,7 +10,9 @@ import logging
 import operator
 import sys
 
-def main(ifh, ofh, ranks):
+import matplotlib.pyplot as plt
+
+def main(ifh, ofh, ranks, pie):
   logging.info('starting...')
   
   ctxs = collections.defaultdict(dict)
@@ -36,12 +38,25 @@ def main(ifh, ofh, ranks):
       o['sig{}'.format(i+1)] = bests[i]
       o['proportion{}'.format(i+1)] = '{:.6f}'.format(cands[bests[i]] / total)
     odw.writerow(o)
+    if pie is not None:
+       target = pie.replace('CTX', c)
+       fig = plt.figure(figsize=(12, 6))
+       ax = fig.add_subplot(111) 
+       labels = bests[:ranks]
+       values = [cands[bests[i]] / total for i in range(ranks)]
+       labels.append('Other')
+       values.append(1-sum(values))
+       ax.pie(values, labels=labels, autopct='%.0f%%', labeldistance=None, textprops={'fontsize': 16})
+       ax.legend(labels=labels, loc='best', bbox_to_anchor=(-0.1, 1.), fontsize=14)
+       plt.savefig(target, bbox_inches="tight")
+       logging.info('wrote %s', target)
 
   logging.info('done')
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Assess MSI')
   parser.add_argument('--ranks', type=int, required=False, default=1, help='how many to show')
+  parser.add_argument('--pie', required=False, help='template for pie file x.CTX.png')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -49,5 +64,5 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  main(sys.stdin, sys.stdout, args.ranks)
+  main(sys.stdin, sys.stdout, args.ranks, args.pie)
 
