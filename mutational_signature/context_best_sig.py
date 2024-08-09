@@ -45,9 +45,14 @@ def main(ifh, ofh, ranks, pie):
        labels = bests[:ranks]
        values = [cands[bests[i]] / total for i in range(ranks)]
        labels.append('Other')
-       values.append(1-sum(values))
+       values.append(max(0, 1-sum(values)))
+       logging.debug('pie values: %s', values)
        ax.pie(values, labels=labels, autopct='%.0f%%', labeldistance=None, textprops={'fontsize': 16})
        ax.legend(labels=labels, loc='best', bbox_to_anchor=(-0.1, 1.), fontsize=14)
+       if len(c) == 4 and all([x in 'ACGT' for x in c]):
+         ax.set_title('Context {}{}{}>{}'.format(c[0], c[1], c[3], c[2]))
+       else:
+         ax.set_title('Context {}'.format(c))
        plt.savefig(target, bbox_inches="tight")
        logging.info('wrote %s', target)
 
