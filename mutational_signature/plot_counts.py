@@ -160,7 +160,8 @@ def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, fig
   ax2.tick_params(axis='both', which='both', length=0)
   ax2.set_xlim(ax.get_xlim())
   ax2.set_xticks([ width * (0/84 + 6/84), width * (12/84 + 6/84), width * (24/84 + 12/84), width * (48/84 + 12/84), width * (72/84 + 6/84)])
-  ax2.set_xticklabels(['1bp deletion', '1bp insertion', '>1bp deletion at repeat\n(deletion length)', '>1bp insertion at repeat\n(insertion length)', 'Deletion with microhomology\n(deletion length)'], fontsize=title_fontsize)
+  if fontsize > 0:
+    ax2.set_xticklabels(['1bp deletion', '1bp insertion', '>1bp deletion at repeat\n(deletion length)', '>1bp insertion at repeat\n(insertion length)', 'Deletion with microhomology\n(deletion length)'], fontsize=fontsize)
 
   # bottom axes
   ax3 = ax.twiny()
@@ -170,7 +171,8 @@ def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, fig
   ax3.spines['bottom'].set_visible(False)
   ax3.tick_params(axis='both', which='both', length=0)
   ax3.set_xticks([ width * (0/84 + 6/84), width * (12/84 + 6/84), width * (24/84 + 12/84), width * (48/84 + 12/84), width * (72/84 + 6/84)])
-  ax3.set_xticklabels(['Homopolymer length', 'Homopolymer length', 'Number of repeat units', 'Number of repeat units', 'Microhomology length'], fontsize=title_fontsize)
+  if fontsize > 0:
+    ax3.set_xticklabels(['Homopolymer length', 'Homopolymer length', 'Number of repeat units', 'Number of repeat units', 'Microhomology length'], fontsize=fontsize)
 
   # additional help
   squiggem = 0.01 * ylim
