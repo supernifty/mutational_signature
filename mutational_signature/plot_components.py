@@ -32,6 +32,13 @@ def formatter_container(vals):
 
   return formatter
 
+def transpose(m):
+  '''
+    not really a full transpose
+    [[x1], [x2], ...] -> [[x1, x2, ...]]
+  '''
+  return [[x[0] for x in m]]
+
 def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_fontsize=None, legend_cols=1, denormalize=False, transparent=False, custom_colors=None, fontfamily=None, indicators=None, indicator_cmaps=None, indicator_cat=None, auto_max=False, xaxis_fontsize=None, yaxis_fontsize=None, dpi=300, linewidth=None):
   logging.info('reading from stdin with threshold %f and order %s...', threshold, order)
 
@@ -124,13 +131,13 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       s, c = sc.split('=')
       colors[s] = c
   
-  if vertical:
+  if vertical: ##### vertical view
     logging.info('going vertical...')
     import matplotlib.style
     matplotlib.style.use('seaborn') 
 
     if len(indicators) > 0:
-      logging.warning('indicators not yet implemented on vertical view')
+      logging.warning('indicators beta on vertical view')
 
     if linewidth is not None:
       matplotlib.rcParams.update({'axes.linewidth': linewidth})
@@ -141,7 +148,20 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     else:
       figure_width = figure_width or 24
       fig = plt.figure(figsize=(figure_width, figure_height))
-    ax = fig.add_subplot(111)
+
+    if len(indicators) > 0:
+      logging.info('%i indicators', len(indicators))
+      grid = plt.GridSpec(nrows=40, ncols=1, hspace=0.2, wspace=0.2) # number of rows, number of columns
+      ax = fig.add_subplot(grid[len(indicators):, :])
+      axis = []
+      for i in range(len(indicators)):
+        axis.append(fig.add_subplot(grid[i, :], sharex=ax)) # first rows
+        axis[i].axes.get_xaxis().set_visible(False) # and no x-axis
+        axis[i].axes.get_yaxis().set_visible(False) # and no y-axis
+      logging.info('axis is %s', axis)
+    else:
+      logging.info('no indicators')
+      ax = fig.add_subplot(111)
 
     if xaxis_fontsize is not None:
       ax.tick_params(axis='x', labelsize=xaxis_fontsize)
@@ -150,7 +170,10 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
 
     ax.xaxis.label.set_size(fontsize)
     ax.yaxis.label.set_size(fontsize)
-    ax.title.set_fontsize(fontsize)
+    if len(indicators) > 0:
+      axis[0].title.set_fontsize(fontsize)
+    else:
+      ax.title.set_fontsize(fontsize)
 
     if legend_fontsize is not None:
       plt.rc('legend',fontsize=legend_fontsize)
@@ -192,22 +215,53 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     if not denormalize and not auto_max:
       ax.set_ylim(0, 100)
 
-    ax.set_title(title or 'Somatic mutational signatures per sample', fontsize=fontsize)
+    if len(indicators) > 0:
+      axis[0].set_title(title or 'Somatic mutational signatures per sample', fontsize=fontsize)
+    else:
+      ax.set_title(title or 'Somatic mutational signatures per sample', fontsize=fontsize)
   
     # place legend at right based on https://stackoverflow.com/questions/10101700/moving-matplotlib-legend-outside-of-the-axis-makes-it-cutoff-by-the-figure-box/10154763#10154763
     handles, labels = ax.get_legend_handles_labels()
 
-    if legend_height is not None and legend_width is not None and legend_y_offset is not None:
-      lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01, legend_y_offset, legend_width, legend_height), borderaxespad=0, ncol=legend_cols)
+    if len(indicators) > 0:
+      logging.info('adding indicators: %s', data_ind)
+      for i in range(len(indicators)):
+        # and the legend
+        cbaxes = fig.add_axes([0.91, 0.11 + 0.11 * i, 0.01, 0.1]) # left bottom width height - position of legend
+        if indicators[i] in indicator_cat:
+          vals = indicator_vals[indicators[i]].copy()
+          tx = transpose(data_ind[indicators[i]])
+          im = axis[i].imshow(tx, cmap=plt.cm.get_cmap(indicator_cmaps[i], len(vals)), aspect="auto")
+          logging.debug('indicator_vals: %s', vals)
+          #formatter = plt.FuncFormatter(lambda val, loc: vals[val])
+          formatter = plt.FuncFormatter(formatter_container(vals))
+          cbar = axis[i].figure.colorbar(im, ax=axis[i], cax=cbaxes, ticks=range(len(vals)), format=formatter) #fraction=0.4, pad=0.2, anchor=(0.1, 0.4)) #, fraction=0.04, pad=0.01, shrink=0.5)
+          im.set_clim(-0.5, len(vals) - 0.5)
+        else:
+          tx = transpose(data_ind[indicators[i]])
+          im = axis[i].imshow(tx, cmap=indicator_cmaps[i], interpolation='nearest', aspect="auto")
+          cbar = axis[i].figure.colorbar(im, ax=axis[i], cax=cbaxes) #fraction=0.4, pad=0.2, anchor=(0.1, 0.4)) #, fraction=0.04, pad=0.01, shrink=0.5) # this is the legend colorbar
+        cbar.set_label(indicators[i]) # this is the legend text for the indicators
+        axis[i].set_yticklabels([''] + [indicators[i]], rotation=90)
+        axis[i].margins(x=0)
+      #cb = plt.colorbar(axi, cax=cbaxes)  
+      lgd = axis[-len(indicators)].legend(handles, labels, loc='upper left', bbox_to_anchor=(1.1,1.0), borderaxespad=0.1) # these are the signature labels
     else:
-      lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01, 1.0), borderaxespad=0, ncol=legend_cols)
+      logging.info('no indicators to add')
+      #lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0, ncol=legend_cols)
+      if legend_height is not None and legend_width is not None and legend_y_offset is not None:
+        lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01, legend_y_offset, legend_width, legend_height), borderaxespad=0, ncol=legend_cols)
+      else:
+        lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01, 1.0), borderaxespad=0, ncol=legend_cols)
+
     lgd.get_frame().set_edgecolor('#000000')
+
     #fig.savefig(target, transparent=True, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
     logging.info('writing to %s with dpi %i', target, dpi)
     ax.margins(x=0)
     fig.savefig(target, transparent=transparent, dpi=dpi, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
-  else: # horizontal
+  else: ###### horizontal
     logging.info('going horizontal...')
     figure_width = figure_width or 24
     if figure_height is None:
@@ -367,7 +421,7 @@ if __name__ == '__main__':
   parser.add_argument('--auto_max', action='store_true', help='do not set max to 100 percent')
   parser.add_argument('--transparent', action='store_true', help='transparent')
   parser.add_argument('--indicators', nargs='*', required=False, help='columns to use as indicators')
-  parser.add_argument('--indicator_cmaps', nargs='*', required=False, help='columns to use as indicators')
+  parser.add_argument('--indicator_cmaps', nargs='*', required=False, help='cmap to use for each indicator')
   parser.add_argument('--indicator_cat', nargs='*', required=False, help='categorical indicators')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
