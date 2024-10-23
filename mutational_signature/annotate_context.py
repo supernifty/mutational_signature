@@ -117,11 +117,12 @@ def vcf_writer(out):
   def write_header(vcf_in):
     out.write(vcf_in.raw_header)
 
-  def write_variant(variant, sig_context, surrounding_context, tx_strand, sequence_name, best_sig):
+  def write_variant(variant, sig_context, surrounding_context, tx_strand, sequence_name, best_sig, ctx_totals):
     if sig_context is not None:
       variant.INFO["sig_context"] = sig_context
       if best_sig is not None and sig_context in best_sig:
         variant.INFO["best_sig"] = best_sig[sig_context][0]
+        variant.INFO["best_sig_likelihood"] = '{:.3f}'.format(best_sig[sig_context][1] / ctx_totals[sig_context])
     if surrounding_context is not None:
       variant.INFO[sequence_name] = surrounding_context
     if tx_strand is not None:
@@ -187,6 +188,7 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
   #vcf_in = cyvcf2.VCF(vcf)
   out['add_to_header']({'ID': 'sig_context', 'Description': 'mutational signature trinucleotide context', 'Type':'Character', 'Number': '1'})
   out['add_to_header']({'ID': 'best_sig', 'Description': 'signature most likely associated with this context', 'Type':'Character', 'Number': '1'})
+  out['add_to_header']({'ID': 'best_sig_likelihood', 'Description': 'likelihood of best signature associated with this context', 'Type':'Character', 'Number': '1'})
   if sequence > 0:
     out['add_to_header']({'ID': sequence_name, 'Description': 'reference sequence surrounding variant', 'Type':'Character', 'Number': '1'})
   out['write_header'](vcf_in)
@@ -198,6 +200,7 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
     transcripts, exons = (None, None)
 
   best_sig = {} # ctx -> (signame prop) (with highest prop)
+  ctx_totals = collections.defaultdict(float)
   if signatures is not None:
     for s in signatures:
       for r in csv.DictReader(open(s, 'rt'), delimiter='\t'):
@@ -208,6 +211,7 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
           prop = float(r[ctx])
           if len(ctx) == 4: # ACGT -> ACT>G
             ctx = '{}{}{}>{}'.format(ctx[0], ctx[1], ctx[3], ctx[2])
+          ctx_totals[ctx] += prop
           if ctx not in best_sig or best_sig[ctx][1] < prop:
             best_sig[ctx] = (signame, prop)
 
@@ -241,7 +245,7 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
     else:
       tx_strand = None
 
-    out['write_variant'](variant, sig_context, surrounding_context, tx_strand, sequence_name, best_sig)
+    out['write_variant'](variant, sig_context, surrounding_context, tx_strand, sequence_name, best_sig, ctx_totals)
 
     if (line + 1) % 10000 == 0:
       logging.debug('processed %i lines...', line + 1)
@@ -289,11 +293,13 @@ def maf_writer(out): # DictWriter
   def write_header(vcf_in):
     out.writeheader()
 
-  def write_variant(variant, sig_context, surrounding_context, tx_strand, sequence_name, best_sig):
+  def write_variant(variant, sig_context, surrounding_context, tx_strand, sequence_name, best_sig, ctx_totals):
     if sig_context is not None:
       variant.row["sig_context"] = sig_context
       if best_sig is not None and sig_context in best_sig:
+        #logging.info('writing ctx %s with %s and %s', sig_context, best_sig[sig_context], ctx_totals)
         variant.row["best_sig"] = best_sig[sig_context][0]
+        variant.row["best_sig_likelihood"] = '{:.3f}'.format(best_sig[sig_context][1] / ctx_totals[sig_context])
     if surrounding_context is not None:
       variant.row[sequence_name] = surrounding_context
     if tx_strand is not None:
@@ -310,7 +316,7 @@ def maf_writer(out): # DictWriter
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')
   parser.add_argument('--genome', required=True, help='reference genome')
-  parser.add_argument('--sequence', required=False, default=0, type=int, help='surrounding sequence in each direction to annotate, 0 to skip')
+  parser.add_argument('--sequence', required=False, default=4, type=int, help='surrounding sequence in each direction to annotate, 0 to skip')
   parser.add_argument('--sequence_name', required=False, default='surrounding', help='surrounding sequence field name')
   parser.add_argument('--vcf', required=True, help='vcf')
   parser.add_argument('--is_maf', action='store_true', help='vcf is a maf')
@@ -330,7 +336,7 @@ if __name__ == '__main__':
 
   if args.is_maf:
     vcf_in = maf_to_vcf(args.vcf, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column)
-    writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['sig_context', 'best_sig', args.sequence_name, 'tx_strand'])
+    writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['sig_context', 'best_sig', 'best_sig_likelihood', args.sequence_name, 'tx_strand'])
     vcf_out = maf_writer(writer)
     annotate(open(args.genome, 'r'), vcf_in['maf_reader'], vcf_out, sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts, sequence_name=args.sequence_name, signatures=args.signatures)
   else:

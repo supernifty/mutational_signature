@@ -82,7 +82,11 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       logging.debug('processing line %i: extracting %s...', idx, o)
       if o in ('Error', 'Mutations'):
         continue
-      val = float(row[header.index(o)])
+      try:
+        val = float(row[header.index(o)])
+      except:
+        logging.warning('Missing value for %s', o)
+        val = 0.0
       xs.append(val)
       if val > threshold:
         seen_index.add(i)

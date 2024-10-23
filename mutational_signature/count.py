@@ -45,7 +45,11 @@ INDELS = set(['DEL_C_1_0', 'DEL_C_1_1', 'DEL_C_1_2', 'DEL_C_1_3', 'DEL_C_1_4', '
 def normalize_doublet(v):
   if v not in DOUBLETS:
     # reverse it
-    v = '{}{}>{}{}'.format(COMP[v[1]], COMP[v[0]], COMP[v[4]], COMP[v[3]])
+    try:
+      v = '{}{}>{}{}'.format(COMP[v[1]], COMP[v[0]], COMP[v[4]], COMP[v[3]])
+    except:
+      logging.warning('something weird with doublet %s', v)
+
     if v not in DOUBLETS:
       logging.warning('failed to solve doublet %s', v)
   return v
