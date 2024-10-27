@@ -484,15 +484,18 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
 def get_value(header, col, row):
   return row[header.index(col)]
 
+def get_info(header, row):
+  return {header[i]: row[i] for i in range(len(header))}
+
 def open_file(fn, is_gzipped):
   if is_gzipped:
     return gzip.open(fn, 'rt')
   else:
     return open(fn, 'rt')
 
-def maf_to_vcf(maf, sample, sample_col, chrom_col, pos_col, ref_col, alt_col, is_not_zipped):
+def maf_to_vcf(maf, sample, sample_col, chrom_col, pos_col, ref_col, alt_col, is_not_zipped, maf_filter_column):
 
-  Variant = collections.namedtuple('Variant', 'CHROM POS REF ALT')
+  Variant = collections.namedtuple('Variant', 'CHROM POS REF ALT FILTER INFO')
 
   # enumeration a maf into a variant
   header = None
@@ -519,8 +522,10 @@ def maf_to_vcf(maf, sample, sample_col, chrom_col, pos_col, ref_col, alt_col, is
       pos += 1 # fix for TCGA mafs
     ref = ref.replace('-', '')
     alt = get_value(header, alt_col, row).replace('-', '')
+    flter = get_value(header, maf_filter_column, row)
+    info = get_info(header, row)
 
-    yield Variant(chrom, pos, ref, (alt,))
+    yield Variant(chrom, pos, ref, (alt,), flter, info)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='mutational signature counter')
@@ -534,6 +539,7 @@ if __name__ == '__main__':
   parser.add_argument('--maf_pos_column', required=False, default='Start_Position', help='maf pos column name')
   parser.add_argument('--maf_ref_column', required=False, default='Reference_Allele', help='maf ref column name')
   parser.add_argument('--maf_alt_column', required=False, default='Tumor_Seq_Allele2', help='maf alt column name')
+  parser.add_argument('--maf_filter_column', required=False, default='FILTER', help='maf alt column name')
   parser.add_argument('--doublets', action='store_true', help='count doublets')
   parser.add_argument('--indels', action='store_true', help='count indels')
   parser.add_argument('--just_indels', action='store_true', help='count only indels')
@@ -551,7 +557,7 @@ if __name__ == '__main__':
   chroms = None
   for idx, v in enumerate(args.vcf):
     if args.maf_sample is not None:
-      vcf_in = maf_to_vcf(v, args.maf_sample, args.maf_sample_column, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column, args.vcf_not_zipped)
+      vcf_in = maf_to_vcf(v, args.maf_sample, args.maf_sample_column, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column, args.vcf_not_zipped, args.maf_filter_column)
     else:
       vcf_in = cyvcf2.VCF(v)
     if args.out is None:
