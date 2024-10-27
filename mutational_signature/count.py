@@ -287,8 +287,8 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
         counts[doublet] += count_weight
         logging.debug('doublet found at %s:%s: %s', no_chr(variant.CHROM), variant.POS, doublet)
 
-def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, doublets=False, indels=False, just_indels=False, mer=3, weight=None):
-  logging.info('processing %s with %i filters...', vcf, len(variant_filters))
+def multi_count(genome_fh, vcf_in, outs=None, chroms=None, variant_filters=None, doublets=False, indels=False, just_indels=False, mer=3, weight=None):
+  logging.info('multi_count with %i filters...', len(variant_filters))
 
   if chroms is None:
     chroms = {}
@@ -302,7 +302,7 @@ def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, do
   next_chrom = None
 
   last_variant = None
-  vcf_in = cyvcf2.VCF(vcf)
+  #vcf_in = cyvcf2.VCF(vcf)
   for line, variant in enumerate(vcf_in):
     if no_chr(variant.CHROM) not in chroms_seen:
       logging.debug('chrom %s seen in vcf', no_chr(variant.CHROM))
@@ -319,7 +319,7 @@ def multi_count(genome_fh, vcf, outs=None, chroms=None, variant_filters=None, do
     if (line + 1) % 100000 == 0:
       logging.debug('processed %i lines', line + 1)
     
-  logging.info('processing %s. done', vcf)
+  logging.info('multi_count: done')
 
   # write out results
   all_total_counts = []

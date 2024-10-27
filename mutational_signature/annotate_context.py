@@ -68,7 +68,7 @@ def context(variant, chroms):
     logging.info('context: skipping chromosome %s', chrom)
     return None
   if variant.POS == 1 or variant.POS > len(chroms[chrom]):
-    logging.info('context: skipped edge variant at %s:%i', chrom, variant.POS)
+    logging.info('context: skipped edge variant at %s:%i with chrom length %i', chrom, variant.POS, len(chroms[chrom]))
     return None
   if len(variant.REF) != 1 or len(variant.ALT) == 0 or len(variant.ALT[0]) != 1 or variant.ALT[0] == '-':
     # indel context!
@@ -101,7 +101,7 @@ def surrounding(variant, sequence, chroms):
     logging.info('surrounding: skipping chromosome %s', chrom)
     return None
   if variant.POS < sequence or variant.POS > len(chroms[chrom]) - sequence:
-    logging.info('surrounding: skipped edge variant at %s:%i', chrom, variant.POS)
+    logging.info('surrounding: skipped edge variant at %s:%i from chromosome length %i', chrom, variant.POS, len(chroms[chrom]))
     return None
 
   # 0 1 2 -> my indexes
