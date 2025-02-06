@@ -13,5 +13,7 @@ setuptools.setup(
     name=name,
     version=version,
     packages=setuptools.find_packages(),
+    package_data={"mutational_signature": ["data/*"]},
+    include_package_data=True,
     scripts=[i for i in glob("mutational_signature/*.py") if "__init__" not in i],
 )
