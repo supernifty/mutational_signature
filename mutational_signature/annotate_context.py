@@ -172,7 +172,7 @@ def read_transcripts(transcripts):
   logging.info('reading %s: done with %i exon bases and %i tx bases', transcripts, bases, txbases)
   return txtree, tree
 
-def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequence=0, plot=None, transcripts_fn=None, sequence_name=None, signatures=None):
+def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequence=0, plot=None, transcripts_fn=None, sequence_name=None, signatures=None, signatures_as_paths=False):
   logging.info('processing...')
 
   if chroms is None:
@@ -202,7 +202,7 @@ def annotate(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, sequ
   best_sig = {} # ctx -> (signame prop) (with highest prop)
   ctx_totals = collections.defaultdict(float)
   if signatures is not None:
-    if not args.signature_as_paths:
+    if not signatures_as_paths:
       from importlib.resources import files
       signatures = [files("mutational_signature").joinpath("data").joinpath(s) for s in signatures]
     for s in signatures:
@@ -330,7 +330,7 @@ if __name__ == '__main__':
   parser.add_argument('--plot', required=False, help='plot context breakdowns')
   parser.add_argument('--transcripts', required=False, help='refseq transcript file')
   parser.add_argument('--signatures', required=False, nargs='+', help='signature files to add a representative signature')
-  parser.add_argument('--signature_as_paths', required=False, default=False, action='store_true', help='signature files are paths, rather than filenames in the data directory')
+  parser.add_argument('--signatures_as_paths', required=False, default=False, action='store_true', help='signature files are paths, rather than filenames in the data directory')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -342,7 +342,7 @@ if __name__ == '__main__':
     vcf_in = maf_to_vcf(args.vcf, args.maf_chrom_column, args.maf_pos_column, args.maf_ref_column, args.maf_alt_column)
     writer = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=vcf_in['tsv_reader'].fieldnames + ['sig_context', 'best_sig', 'best_sig_likelihood', args.sequence_name, 'tx_strand'])
     vcf_out = maf_writer(writer)
-    annotate(open(args.genome, 'r'), vcf_in['maf_reader'], vcf_out, sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts, sequence_name=args.sequence_name, signatures=args.signatures, signatures_as_paths=args.signature_as_paths)
+    annotate(open(args.genome, 'r'), vcf_in['maf_reader'], vcf_out, sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts, sequence_name=args.sequence_name, signatures=args.signatures, signatures_as_paths=args.signatures_as_paths)
   else:
     vcf_in = cyvcf2.VCF(args.vcf)
-    annotate(open(args.genome, 'r'), vcf_in, vcf_writer(sys.stdout), sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts, sequence_name=args.sequence_name, signatures=args.signatures, signatures_as_paths=args.signature_as_paths)
+    annotate(open(args.genome, 'r'), vcf_in, vcf_writer(sys.stdout), sequence=args.sequence, plot=args.plot, transcripts_fn=args.transcripts, sequence_name=args.sequence_name, signatures=args.signatures, signatures_as_paths=args.signatures_as_paths)
