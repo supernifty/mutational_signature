@@ -109,7 +109,11 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
           logging.debug('empty value for %s on row %i', i, idx)
           data_ind[i].append([0.0])
         else:
-          data_ind[i].append([float(row[header.index(i)])])
+          try:
+            data_ind[i].append([float(row[header.index(i)])])
+          except:
+            logging.debug('cannot convert value for %s on row %i', i, idx)
+            data_ind[i].append([0.0])
 
   # sort the categorical indicators
   for i in indicator_cat:

@@ -4,6 +4,7 @@
 '''
 
 import argparse
+import csv
 import collections
 import logging
 import sys
@@ -105,7 +106,7 @@ INDEL_MAP = {
   '5:Ins:M:5': 'INS_MH_5+_5+'
 }
 
-def main(conversion, delimiter=','):
+def main(conversion, delimiter=None):
   logging.info('reading from stdin...')
   if conversion is None or conversion in ('sbs', 'sbs32'):
     # v4 to v3
@@ -118,7 +119,8 @@ def main(conversion, delimiter=','):
     #Signature.1     0.011098326166  0.009149340734  0.001490070468  0.006233885236  0.006595870109  0.007342367815  0.00089284037   0.007186581642  0.008232603989  0.00575802141   0.000616335232  0.004459080311  0.012250063666  0.011162229329  0.002275495686  0.015259102491  0.001801068369  0.00258090852   0.000592548022  0.002963986287  0.001284983446  0.000702134818  0.000506289594  0.001381542722  0.000602122711  0.002393352209  2.48534e-07     0.000890080731  0.001874853199  0.002067418791  0.000304897004  0.00315157446  0.029514532745   0.014322747041  0.171646931305  0.012623763151  0.020896446965  0.01850170477   0.095577217268  0.017113307642  0.024943814154  0.027161494035  0.103570762296  0.017689854381  0.014492099634  0.017680775357  0.076002221712  0.013761704021  0.004021520333  0.002371144163  0.002810909959  0.008360909345  0.001182587416  0.001903166857  0.00148796063   0.002179344412  0.000689289439  0.000552409528  0.001200228847  0.002107136837  0.005600155423  0.00199907926   0.001090065693  0.003981022761  0.01391577303  0.0062749606     0.010137636154  0.009256316389  0.004176674882  0.005252593331  0.00701322531   0.006713813119  0.011247835116  0.006999724257  0.004977592617  0.010667406133  0.008073616351  0.004857381178  0.008325454207  0.006257105605  0.001587636423  0.001784091288  0.001385830552  0.003158539312  0.000302691186  0.00209850244   0.0015995485    0.002758537619  9.9045003e-05   0.000202365646  0.001188353185  0.000800723342  0.001397553749  0.001291736985  0.00203107688   0.00403012816
 
     # 3.2 uses tabs
-    delimiter = '\t' if conversion == 'sbs32' else ','
+    if delimiter is None:
+      delimiter = '\t' if conversion in ('sbs32', 'db32') else ','
 
     header = sys.stdin.readline().strip('\r\n').split(delimiter)
   
@@ -126,6 +128,7 @@ def main(conversion, delimiter=','):
     contexts = set()
     for line in sys.stdin:
       fields = line.strip('\r\n').split(delimiter)
+      logging.debug('fields is %s', fields)
       if conversion == 'sbs32':
         context = '{}{}{}{}'.format(fields[0][0], fields[0][2], fields[0][4], fields[0][6]) # A[C>A]A => ACAA
         contexts.add(context)
@@ -215,6 +218,25 @@ def main(conversion, delimiter=','):
     for sig in sorted(result.keys()):
       sys.stdout.write('{}\t{}\n'.format(sig, '\t'.join([result[sig][context] for context in contexts_list])))
 
+  elif conversion == 'sbs_signal':
+    idr = csv.DictReader(sys.stdin, delimiter=delimiter)
+    new_header = ['Sig']
+    for h in idr.fieldnames[1:]:
+      context = '{}{}{}{}'.format(h[0], h[2], h[4], h[6]) # A[C>A]A => ACAA
+      new_header.append(context)
+    odw = csv.DictWriter(sys.stdout, delimiter='\t', fieldnames=new_header)
+    odw.writeheader()
+
+    for row in idr:
+      new_row = {}
+      for h in row:
+        if h == 'signature':
+          new_row['Sig'] = row[h]
+        else:
+          context = '{}{}{}{}'.format(h[0], h[2], h[4], h[6]) # A[C>A]A => ACAA
+          new_row[context] = row[h]
+      odw.writerow(new_row)
+
   else:
     logging.warn('unrecognized conversion')
   
@@ -222,7 +244,8 @@ def main(conversion, delimiter=','):
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Convert COSMIC signatures to our format')
-  parser.add_argument('--conversion', help='specify conversion type sbs db id sbstx sbs32')
+  parser.add_argument('--delimiter', help='input delimiter')
+  parser.add_argument('--conversion', help='specify conversion type sbs db id sbstx sbs32 db32 sbs_signal')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -230,4 +253,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  main(args.conversion)
+  main(args.conversion, args.delimiter)

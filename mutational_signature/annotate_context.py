@@ -62,6 +62,20 @@ def update_chroms(required, chroms, genome, next_chrom):
   logging.debug('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
   return None
 
+def doublet_context(variant, chroms, last_variant):
+  '''
+    look for a doublet context!
+  '''
+  if last_variant is not None and no_chr(last_variant.CHROM) == no_chr(variant.CHROM) and last_variant.POS == variant.POS - 1:
+    doublet = '{}{}>{}{}'.format(last_variant.REF, variant.REF, last_variant.ALT[0], variant.ALT[0]) # TODO ALT[0] could be weird if '-' ?
+    if len(doublet) != 5:
+      logging.warning('skipping doublet %s at %s:%i', doublet, no_chr(variant.CHROM), variant.POS)
+    else:
+      doublet = mutational_signature.count.normalize_doublet(doublet)
+      logging.debug('doublet found at %s:%s: %s', no_chr(variant.CHROM), variant.POS, doublet)
+      return doublet
+  return None
+
 def context(variant, chroms):
   chrom = variant.CHROM.replace('chr', '')
   if chrom not in chroms:
