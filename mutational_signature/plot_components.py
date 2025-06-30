@@ -142,7 +142,10 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
   if vertical: ##### vertical view
     logging.info('going vertical...')
     import matplotlib.style
-    matplotlib.style.use('seaborn') 
+    try:
+      matplotlib.style.use('seaborn-v0_8')
+    except:
+      matplotlib.style.use('seaborn')
 
     if len(indicators) > 0:
       logging.warning('indicators beta on vertical view')

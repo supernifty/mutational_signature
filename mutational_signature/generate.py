@@ -237,7 +237,10 @@ def generate(counts, components, use_proportion, stats, min_mutation_proportion,
       logging.info('plotting to %s...', bootstrap_fn)
       pca = sklearn.decomposition.PCA(n_components=2).fit(bootstrap_results)
       xy = pca.transform(bootstrap_results)
-      matplotlib.style.use('seaborn')
+      try:
+        matplotlib.style.use('seaborn-v0_8')
+      except:
+        matplotlib.style.use('seaborn')
       fig = plt.figure()
       ax = fig.add_subplot(111)
       ax.scatter([x[0] for x in xy], [x[1] for x in xy], c=[colors[x] for x in clusterer.labels_])

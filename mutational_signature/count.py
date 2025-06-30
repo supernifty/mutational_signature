@@ -40,7 +40,100 @@ def normalize_sbs(v, strand_tx, strand_exon):
 
 DOUBLETS = set(['AC>CA', 'AC>CG', 'AC>CT', 'AC>GA', 'AC>GG', 'AC>GT', 'AC>TA', 'AC>TG', 'AC>TT', 'AT>CA', 'AT>CC', 'AT>CG', 'AT>GA', 'AT>GC', 'AT>TA', 'CC>AA', 'CC>AG', 'CC>AT', 'CC>GA', 'CC>GG', 'CC>GT', 'CC>TA', 'CC>TG', 'CC>TT', 'CG>AT', 'CG>GC', 'CG>GT', 'CG>TA', 'CG>TC', 'CG>TT', 'CT>AA', 'CT>AC', 'CT>AG', 'CT>GA', 'CT>GC', 'CT>GG', 'CT>TA', 'CT>TC', 'CT>TG', 'GC>AA', 'GC>AG', 'GC>AT', 'GC>CA', 'GC>CG', 'GC>TA', 'TA>AT', 'TA>CG', 'TA>CT', 'TA>GC', 'TA>GG', 'TA>GT', 'TC>AA', 'TC>AG', 'TC>AT', 'TC>CA', 'TC>CG', 'TC>CT', 'TC>GA', 'TC>GG', 'TC>GT', 'TG>AA', 'TG>AC', 'TG>AT', 'TG>CA', 'TG>CC', 'TG>CT', 'TG>GA', 'TG>GC', 'TG>GT', 'TT>AA', 'TT>AC', 'TT>AG', 'TT>CA', 'TT>CC', 'TT>CG', 'TT>GA', 'TT>GC', 'TT>GG'])
 
-INDELS = set(['DEL_C_1_0', 'DEL_C_1_1', 'DEL_C_1_2', 'DEL_C_1_3', 'DEL_C_1_4', 'DEL_C_1_5+', 'DEL_MH_2_1', 'DEL_MH_3_1', 'DEL_MH_3_2', 'DEL_MH_4_1', 'DEL_MH_4_2', 'DEL_MH_4_3', 'DEL_MH_5+_1', 'DEL_MH_5+_2', 'DEL_MH_5+_3', 'DEL_MH_5+_4', 'DEL_MH_5+_5+', 'DEL_T_1_0', 'DEL_T_1_1', 'DEL_T_1_2', 'DEL_T_1_3', 'DEL_T_1_4', 'DEL_T_1_5+', 'DEL_repeats_2_0', 'DEL_repeats_2_1', 'DEL_repeats_2_2', 'DEL_repeats_2_3', 'DEL_repeats_2_4', 'DEL_repeats_2_5+', 'DEL_repeats_3_0', 'DEL_repeats_3_1', 'DEL_repeats_3_2', 'DEL_repeats_3_3', 'DEL_repeats_3_4', 'DEL_repeats_3_5+', 'DEL_repeats_4_0', 'DEL_repeats_4_1', 'DEL_repeats_4_2', 'DEL_repeats_4_3', 'DEL_repeats_4_4', 'DEL_repeats_4_5+', 'DEL_repeats_5+_0', 'DEL_repeats_5+_1', 'DEL_repeats_5+_2', 'DEL_repeats_5+_3', 'DEL_repeats_5+_4', 'DEL_repeats_5+_5+', 'INS_C_1_0', 'INS_C_1_1', 'INS_C_1_2', 'INS_C_1_3', 'INS_C_1_4', 'INS_C_1_5+', 'INS_T_1_0', 'INS_T_1_1', 'INS_T_1_2', 'INS_T_1_3', 'INS_T_1_4', 'INS_T_1_5+', 'INS_repeats_2_0', 'INS_repeats_2_1', 'INS_repeats_2_2', 'INS_repeats_2_3', 'INS_repeats_2_4', 'INS_repeats_2_5+', 'INS_repeats_3_0', 'INS_repeats_3_1', 'INS_repeats_3_2', 'INS_repeats_3_3', 'INS_repeats_3_4', 'INS_repeats_3_5+', 'INS_repeats_4_0', 'INS_repeats_4_1', 'INS_repeats_4_2', 'INS_repeats_4_3', 'INS_repeats_4_4', 'INS_repeats_4_5+', 'INS_repeats_5+_0', 'INS_repeats_5+_1', 'INS_repeats_5+_2', 'INS_repeats_5+_3', 'INS_repeats_5+_4', 'INS_repeats_5+_5+'])
+INDELS_83 = set(['DEL_C_1_0', 'DEL_C_1_1', 'DEL_C_1_2', 'DEL_C_1_3', 'DEL_C_1_4', 'DEL_C_1_5+', 'DEL_MH_2_1', 'DEL_MH_3_1', 'DEL_MH_3_2', 'DEL_MH_4_1', 'DEL_MH_4_2', 'DEL_MH_4_3', 'DEL_MH_5+_1', 'DEL_MH_5+_2', 'DEL_MH_5+_3', 'DEL_MH_5+_4', 'DEL_MH_5+_5+', 'DEL_T_1_0', 'DEL_T_1_1', 'DEL_T_1_2', 'DEL_T_1_3', 'DEL_T_1_4', 'DEL_T_1_5+', 'DEL_repeats_2_0', 'DEL_repeats_2_1', 'DEL_repeats_2_2', 'DEL_repeats_2_3', 'DEL_repeats_2_4', 'DEL_repeats_2_5+', 'DEL_repeats_3_0', 'DEL_repeats_3_1', 'DEL_repeats_3_2', 'DEL_repeats_3_3', 'DEL_repeats_3_4', 'DEL_repeats_3_5+', 'DEL_repeats_4_0', 'DEL_repeats_4_1', 'DEL_repeats_4_2', 'DEL_repeats_4_3', 'DEL_repeats_4_4', 'DEL_repeats_4_5+', 'DEL_repeats_5+_0', 'DEL_repeats_5+_1', 'DEL_repeats_5+_2', 'DEL_repeats_5+_3', 'DEL_repeats_5+_4', 'DEL_repeats_5+_5+', 'INS_C_1_0', 'INS_C_1_1', 'INS_C_1_2', 'INS_C_1_3', 'INS_C_1_4', 'INS_C_1_5+', 'INS_T_1_0', 'INS_T_1_1', 'INS_T_1_2', 'INS_T_1_3', 'INS_T_1_4', 'INS_T_1_5+', 'INS_repeats_2_0', 'INS_repeats_2_1', 'INS_repeats_2_2', 'INS_repeats_2_3', 'INS_repeats_2_4', 'INS_repeats_2_5+', 'INS_repeats_3_0', 'INS_repeats_3_1', 'INS_repeats_3_2', 'INS_repeats_3_3', 'INS_repeats_3_4', 'INS_repeats_3_5+', 'INS_repeats_4_0', 'INS_repeats_4_1', 'INS_repeats_4_2', 'INS_repeats_4_3', 'INS_repeats_4_4', 'INS_repeats_4_5+', 'INS_repeats_5+_0', 'INS_repeats_5+_1', 'INS_repeats_5+_2', 'INS_repeats_5+_3', 'INS_repeats_5+_4', 'INS_repeats_5+_5+'])
+
+# Koh 2025 https://www.nature.com/articles/s41588-025-02152-y see supp table 8
+INDELS_89 = set([
+  'A[Ins(C):R0]A',
+  'A[Ins(C):R0]T',
+  'Ins(C):R(0,3)',
+  'Ins(C):R(4,6)',
+  'Ins(C):R(7,9)',
+  'A[Ins(T):R(0,4)]A',
+  'A[Ins(T):R(0,4)]C',
+  'A[Ins(T):R(0,4)]G',
+  'C[Ins(T):R(0,4)]A',
+  'C[Ins(T):R(0,4)]C',
+  'C[Ins(T):R(0,4)]G',
+  'G[Ins(T):R(0,4)]A',
+  'G[Ins(T):R(0,4)]C',
+  'G[Ins(T):R(0,4)]G',
+  'A[Ins(T):R(5,7)]A',
+  'A[Ins(T):R(5,7)]C',
+  'A[Ins(T):R(5,7)]G',
+  'C[Ins(T):R(5,7)]A',
+  'C[Ins(T):R(5,7)]C',
+  'C[Ins(T):R(5,7)]G',
+  'G[Ins(T):R(5,7)]A',
+  'G[Ins(T):R(5,7)]C',
+  'G[Ins(T):R(5,7)]G',
+  'A[Ins(T):R(8,9)]A',
+  'A[Ins(T):R(8,9)]C',
+  'A[Ins(T):R(8,9)]G',
+  'C[Ins(T):R(8,9)]A',
+  'C[Ins(T):R(8,9)]C',
+  'C[Ins(T):R(8,9)]G',
+  'G[Ins(T):R(8,9)]A',
+  'G[Ins(T):R(8,9)]C',
+  'G[Ins(T):R(8,9)]G',
+  'Ins(2,4):R0',
+  'Ins(5,):R0',
+  'Ins(2,4):R1',
+  'Ins(5,):R1',
+  'Ins(2,):R(2,4)',
+  'Ins(2,):R(5,9)',
+  '[Del(C):R1]A',
+  '[Del(C):R1]T',
+  '[Del(C):R2]A',
+  '[Del(C):R2]T',
+  '[Del(C):R3]A',
+  '[Del(C):R3]T',
+  '[Del(C):R(4,5)]A',
+  '[Del(C):R(4,5)]T',
+  '[Del(C):R(1,5)]G',
+  'Del(C):R(6,9)',
+  'A[Del(T):R(1,4)]A',
+  'A[Del(T):R(1,4)]C',
+  'A[Del(T):R(1,4)]G',
+  'C[Del(T):R(1,4)]A',
+  'C[Del(T):R(1,4)]C',
+  'C[Del(T):R(1,4)]G',
+  'G[Del(T):R(1,4)]A',
+  'G[Del(T):R(1,4)]C',
+  'G[Del(T):R(1,4)]G',
+  'A[Del(T):R(5,7)]A',
+  'A[Del(T):R(5,7)]C',
+  'A[Del(T):R(5,7)]G',
+  'C[Del(T):R(5,7)]A',
+  'C[Del(T):R(5,7)]C',
+  'C[Del(T):R(5,7)]G',
+  'G[Del(T):R(5,7)]A',
+  'G[Del(T):R(5,7)]C',
+  'G[Del(T):R(5,7)]G',
+  'A[Del(T):R(8,9)]A',
+  'A[Del(T):R(8,9)]C',
+  'A[Del(T):R(8,9)]G',
+  'C[Del(T):R(8,9)]A',
+  'C[Del(T):R(8,9)]C',
+  'C[Del(T):R(8,9)]G',
+  'G[Del(T):R(8,9)]A',
+  'G[Del(T):R(8,9)]C',
+  'G[Del(T):R(8,9)]G',
+  'Del(2,4):R1',
+  'Del(5,):R1',
+  'Del(2,8):U(1,2):R(2,4)',
+  'Del(2,):U(1,2):R(5,9)',
+  'Del(3,):U(3,):R2',
+  'Del(3,):U(3,):R(3,9)',
+  'Del(2,5):M1',
+  'Del(3,5):M2',
+  'Del(4,5):M(3,4)',
+  'Del(6,):M1',
+  'Del(6,):M2',
+  'Del(6,):M3',
+  'Del(6,):M(4,)',
+  'Complex'
+])
 
 def normalize_doublet(v):
   if v not in DOUBLETS:
@@ -242,7 +335,7 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     indel_category = '{category}_{content}_{length}_{repeats}'.format(**category)
     counts[indel_category] += count_weight
     #logging.debug('indel at %s:%s %s -> %s classified as %s', no_chr(variant.CHROM), variant.POS, variant.REF, alt, indel_category)
-    if indel_category not in INDELS:
+    if indel_category not in INDELS_83:
       logging.warning('unexpected indel category %s', indel_category)
 
   # no need to look at this indel any more
@@ -351,7 +444,7 @@ def multi_count(genome_fh, vcf_in, outs=None, chroms=None, variant_filters=None,
             out.write('{}\t{}\t{:.6f}\n'.format(doublet, 0, 0))
 
       if indels:
-        for indel in INDELS:
+        for indel in INDELS_83:
           if indel not in counts:
             out.write('{}\t{}\t{:.6f}\n'.format(indel, 0, 0))
 
@@ -475,7 +568,7 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
           out.write('{}\t{}\t{:.6f}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(doublet, 0, 0, 0, 0, 1, 0, 0, 1))
 
     if indels:
-      for indel in INDELS:
+      for indel in INDELS_83:
         if indel not in counts:
           out.write('{}\t{}\t{:.6f}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(indel, 0, 0, 0, 0, 1, 0, 0, 1))
 

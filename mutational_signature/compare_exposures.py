@@ -63,7 +63,10 @@ def compare(x_exposures, y_exposures, out, plot, x_label, y_label, title, log, m
   # scatter
   if plot is not None:
     import matplotlib.style
-    matplotlib.style.use('seaborn')
+    try:
+      matplotlib.style.use('seaborn-v0_8')
+    except:
+      matplotlib.style.use('seaborn')
     fig, ax = plt.subplots()
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)

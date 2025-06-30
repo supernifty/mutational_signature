@@ -13,7 +13,8 @@ import mutational_signature.plot_counts
 def main(prefix, category, sig_col, fontsize, title_fontsize, dpi, suffix, ylim, width, height):
   logging.info('reading from stdin...')
   for row in csv.DictReader(sys.stdin, delimiter='\t'):
-    output = '{}{}.{}'.format(prefix, row[sig_col], suffix)
+    sig_name = row[sig_col].replace('/', '-')
+    output = '{}{}.{}'.format(prefix, sig_name, suffix)
     logging.info('plotting %s...', output)
     if category == 'sbs':
       # ACAA -> C>A ACA
