@@ -45,6 +45,12 @@ def plot(counts, target, style='sbs', name=None, dpi=72, title=None, normalize=F
         logging.debug('skipped {}\n'.format(v))
       else:
         vals[v] = float(probability)
+    elif style == 'dbs':
+      if len(v) == 5 and v[2] == '>':
+        variation = v
+        vals[variation] = float(probability)
+      else:
+        logging.debug('skipped {}\n'.format(v))
     else:
       vals[v] = float(probability)
 

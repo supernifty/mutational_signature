@@ -115,3 +115,4 @@ python mutational_signature/simulate.py --verbose --n 1 --sigdefs data/signature
 * decompose: calculate signature profile for a single sample
 * generate: build a new set of base signatures (incomplete)
 * plot_components: plot a signature profile
+* reduce_similarity: merge signature definitions with high cosine similarity to generate an "orthogonal" set of signatures

@@ -39,7 +39,7 @@ def transpose(m):
   '''
   return [[x[0] for x in m]]
 
-def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_fontsize=None, legend_cols=1, denormalize=False, transparent=False, custom_colors=None, fontfamily=None, indicators=None, indicator_cmaps=None, indicator_cat=None, auto_max=False, xaxis_fontsize=None, yaxis_fontsize=None, dpi=300, linewidth=None):
+def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_fontsize=None, legend_cols=1, denormalize=False, transparent=False, custom_colors=None, fontfamily=None, indicators=None, indicator_cmaps=None, indicator_cat=None, auto_max=False, xaxis_fontsize=None, yaxis_fontsize=None, dpi=300, linewidth=None, indicator_pos=None):
   logging.info('reading from stdin with threshold %f and order %s...', threshold, order)
 
   import matplotlib # again!
@@ -133,7 +133,224 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     filtered.append(new_row)
   data = filtered
 
-  colors = {"SBS1": "#c0c0c0", "SBS2": "#41ac2f", "SBS3": "#7951d0", "SBS4": "#73d053", "SBS5": "#b969e9", "SBS6": "#3176ae", "SBS7a": "#b4b42f", "SBS7b": "#5276ec", "SBS7c": "#daae36", "SBS7d": "#9e40b5", "SBS8": "#43c673", "SBS9": "#dd4cb0", "SBS10a": "#3d9332", "SBS10b": "#de77dd", "SBS10c": "#9e77dd", "SBS10d": "#7e77dd", "SBS11": "#7bad47", "SBS12": "#9479e8", "SBS13": "#487b21", "SBS14": "#a83292", "SBS15": "#664db1", "SBS16": "#83c67d", "SBS17a": "#e18d28", "SBS17b": "#588de5", "SBS18": "#e2672a", "SBS19": "#34c7dd", "SBS20": "#646cc1", "SBS21": "#3b63ac", "SBS22": "#d74587", "SBS23": "#428647", "SBS24": "#7b51a7", "SBS25": "#505099", "SBS26": "#58b5e1", "SBS27": "#a27f1f", "SBS28": "#5acdaf", "SBS29": "#dca653", "SBS30": "#b4ba64", "SBS31": "#7d8529", "SBS32": "#bf8ade", "SBS33": "#516615", "SBS34": "#b65da7", "SBS35": "#57a87a", "SBS36": "#c84249", "SBS37": "#37b5b1", "SBS38": "#a14622", "SBS39": "#df503b", "SBS40": "#ba6e2f", "SBS41": "#589ed8", "SBS42": "#e98261", "SBS43": "#91ba2c", "SBS44": "#656413", "SBS45": "#a19fe2", "SBS46": "#756121", "SBS47": "#7e4a8d", "SBS48": "#326a38", "SBS49": "#dd8abf", "SBS50": "#1a6447", "SBS51": "#e78492", "SBS52": "#30876c", "SBS53": "#9d4d7c", "SBS54": "#919d5b", "SBS55": "#9d70ac", "SBS56": "#5b6f34", "SBS57": "#65659c", "SBS58": "#c9a865", "SBS59": "#a1455d", "SBS60": "#5e622c", "SBS84": "#b66057", "SBS85": "#dca173", 'SBS86': '#ffa600', 'SBS87': '#ffac73', 'SBS88': '#f95d6a', 'SBS89': '#d45087', 'SBS90': '#a05195', 'SBS91': '#665191', 'SBS92': '#2f4b7c', 'SBS93': '#003f5c', 'SBS94': '#123456', 'SBS96': '#64CE74', "DBS1": "#855524", "DBS2": "#9f7846", "DBS3": "#7951d0", "DBS4": "#73d053", "DBS5": "#b969e9", "DBS6": "#91ba2c", "DBS7": "#3656ca", "DBS8": "#b4b42f", "DBS9": "#5276ec", "DBS10": "#daae36", "DBS11": "#9e40b5", "ID1": "#c0c0c0", "ID2": "#7951d0", "ID3": "#41ac2f", "ID4": "#73d053", "ID5": "#b969e9", "ID6": "#91ba2c", "ID7": "#9e40b5", "ID8": "#43c673", "ID9": "#dd4cb0", "ID10": "#3d9332", "ID11": "#de77dd", "ID12": "#9479e8", "ID13": "#7bad47", "ID14": "#487b21", "ID15": "#a83292", "ID16": "#83c67d", "ID17": "#664db1", "ID18": "#964db1", "1": "#b66057", "2": "#dca173", "3": "#855524", "4": "#9f7846", "5": "#7951d0", "6": "#73d053", "7": "#b969e9", "8": "#91ba2c", "9": "#3656ca", "10": "#b4b42f", "11": "#5276ec", "12": "#daae36", "13": "#9e40b5", "14": "#de3860", "15": "#41ac2f", "16": "#7951d0", "17": "#73d053", "18": "#b969e9", "19": "#91ba2c", "20": "#9e40b5", "21": "#43c673", "22": "#dd4cb0", "23": "#3d9332", "24": "#de77dd", "25": "#7bad47", "26": "#9479e8", "27": "#487b21", "28": "#a83292", "29": "#83c67d", "30": "#664db1"}
+  #colors = {"SBS1": "#c0c0c0", "SBS2": "#41ac2f", "SBS3": "#7951d0", "SBS4": "#73d053", "SBS5": "#b969e9", "SBS6": "#3176ae", "SBS7a": "#b4b42f", "SBS7b": "#5276ec", "SBS7c": "#daae36", "SBS7d": "#9e40b5", "SBS8": "#43c673", "SBS9": "#dd4cb0", "SBS10a": "#3d9332", "SBS10b": "#de77dd", "SBS10c": "#9e77dd", "SBS10d": "#7e77dd", "SBS11": "#7bad47", "SBS12": "#9479e8", "SBS13": "#487b21", "SBS14": "#a83292", "SBS15": "#664db1", "SBS16": "#83c67d", "SBS17a": "#e18d28", "SBS17b": "#588de5", "SBS18": "#e2672a", "SBS19": "#34c7dd", "SBS20": "#646cc1", "SBS21": "#3b63ac", "SBS22": "#d74587", "SBS23": "#428647", "SBS24": "#7b51a7", "SBS25": "#505099", "SBS26": "#58b5e1", "SBS27": "#a27f1f", "SBS28": "#5acdaf", "SBS29": "#dca653", "SBS30": "#b4ba64", "SBS31": "#7d8529", "SBS32": "#bf8ade", "SBS33": "#516615", "SBS34": "#b65da7", "SBS35": "#57a87a", "SBS36": "#c84249", "SBS37": "#37b5b1", "SBS38": "#a14622", "SBS39": "#df503b", "SBS40": "#ba6e2f", "SBS41": "#589ed8", "SBS42": "#e98261", "SBS43": "#91ba2c", "SBS44": "#656413", "SBS45": "#a19fe2", "SBS46": "#756121", "SBS47": "#7e4a8d", "SBS48": "#326a38", "SBS49": "#dd8abf", "SBS50": "#1a6447", "SBS51": "#e78492", "SBS52": "#30876c", "SBS53": "#9d4d7c", "SBS54": "#919d5b", "SBS55": "#9d70ac", "SBS56": "#5b6f34", "SBS57": "#65659c", "SBS58": "#c9a865", "SBS59": "#a1455d", "SBS60": "#5e622c", "SBS84": "#b66057", "SBS85": "#dca173", 'SBS86': '#ffa600', 'SBS87': '#ffac73', 'SBS88': '#f95d6a', 'SBS89': '#d45087', 'SBS90': '#a05195', 'SBS91': '#665191', 'SBS92': '#2f4b7c', 'SBS93': '#003f5c', 'SBS94': '#123456', 'SBS96': '#64CE74', "DBS1": "#855524", "DBS2": "#9f7846", "DBS3": "#7951d0", "DBS4": "#73d053", "DBS5": "#b969e9", "DBS6": "#91ba2c", "DBS7": "#3656ca", "DBS8": "#b4b42f", "DBS9": "#5276ec", "DBS10": "#daae36", "DBS11": "#9e40b5", "DBS12": "#E07B91", "DBS19": "#4B9CD3", "ID1": "#c0c0c0", "ID2": "#7951d0", "ID3": "#41ac2f", "ID4": "#73d053", "ID5": "#b969e9", "ID6": "#91ba2c", "ID7": "#9e40b5", "ID8": "#43c673", "ID9": "#dd4cb0", "ID10": "#3d9332", "ID11": "#de77dd", "ID12": "#9479e8", "ID13": "#7bad47", "ID14": "#487b21", "ID15": "#a83292", "ID16": "#83c67d", "ID17": "#664db1", "ID18": "#964db1", "1": "#b66057", "2": "#dca173", "3": "#855524", "4": "#9f7846", "5": "#7951d0", "6": "#73d053", "7": "#b969e9", "8": "#91ba2c", "9": "#3656ca", "10": "#b4b42f", "11": "#5276ec", "12": "#daae36", "13": "#9e40b5", "14": "#de3860", "15": "#41ac2f", "16": "#7951d0", "17": "#73d053", "18": "#b969e9", "19": "#91ba2c", "20": "#9e40b5", "21": "#43c673", "22": "#dd4cb0", "23": "#3d9332", "24": "#de77dd", "25": "#7bad47", "26": "#9479e8", "27": "#487b21", "28": "#a83292", "29": "#83c67d", "30": "#664db1"}
+
+  colors = {
+    'SBS1': '#c0c0c0',
+    'SBS2': '#41ac2f',
+    'SBS3': '#7951d0',
+    'SBS4': '#73d053',
+    'SBS5': '#b969e9',
+    'SBS6': '#3176ae',
+    'SBS7a': '#b4b42f',
+    'SBS7b': '#5276ec',
+    'SBS7c': '#daae36',
+    'SBS7d': '#9e40b5',
+    'SBS8': '#43c673',
+    'SBS9': '#dd4cb0',
+    'SBS10a': '#3d9332',
+    'SBS10b': '#de77dd',
+    'SBS10c': '#9e77dd',
+    'SBS10d': '#7e77dd',
+    'SBS11': '#7bad47',
+    'SBS12': '#9479e8',
+    'SBS13': '#487b21',
+    'SBS14': '#a83292',
+    'SBS15': '#664db1',
+    'SBS16': '#83c67d',
+    'SBS17a': '#e18d28',
+    'SBS17b': '#588de5',
+    'SBS18': '#e2672a',
+    'SBS19': '#34c7dd',
+    'SBS20': '#646cc1',
+    'SBS21': '#3b63ac',
+    'SBS22': '#d74587',
+    'SBS23': '#428647',
+    'SBS24': '#7b51a7',
+    'SBS25': '#505099',
+    'SBS26': '#58b5e1',
+    'SBS27': '#a27f1f',
+    'SBS28': '#5acdaf',
+    'SBS29': '#dca653',
+    'SBS30': '#b4ba64',
+    'SBS31': '#7d8529',
+    'SBS32': '#bf8ade',
+    'SBS33': '#516615',
+    'SBS34': '#b65da7',
+    'SBS35': '#57a87a',
+    'SBS36': '#d45087',
+    'SBS37': '#37b5b1',
+    'SBS38': '#a14622',
+    'SBS39': '#df503b',
+    'SBS40': '#ba6e2f',
+    'SBS41': '#589ed8',
+    'SBS42': '#e98261',
+    'SBS43': '#91ba2c',
+    'SBS44': '#656413',
+    'SBS45': '#a19fe2',
+    'SBS46': '#756121',
+    'SBS47': '#7e4a8d',
+    'SBS48': '#326a38',
+    'SBS49': '#dd8abf',
+    'SBS50': '#1a6447',
+    'SBS51': '#e78492',
+    'SBS52': '#30876c',
+    'SBS53': '#9d4d7c',
+    'SBS54': '#919d5b',
+    'SBS55': '#9d70ac',
+    'SBS56': '#5b6f34',
+    'SBS57': '#65659c',
+    'SBS58': '#c9a865',
+    'SBS59': '#a1455d',
+    'SBS60': '#5e622c',
+    'SBS84': '#b66057',
+    'SBS85': '#dca173',
+    'SBS86': '#ffa600',
+    'SBS87': '#ffac73',
+    'SBS88': '#f95d6a',
+    'SBS89': '#c84249',
+    'SBS90': '#a05195',
+    'SBS91': '#665191',
+    'SBS92': '#2f4b7c',
+    'SBS93': '#003f5c',
+    'SBS94': '#123456',
+    'SBS96': '#64CE74',
+    'DBS1': '#855524',
+    'DBS2': '#9f7846',
+    'DBS3': '#7951d0',
+    'DBS4': '#73d053',
+    'DBS5': '#b969e9',
+    'DBS6': '#91ba2c',
+    'DBS7': '#3656ca',
+    'DBS8': '#c84249',
+    'DBS9': '#5276ec',
+    'DBS10': '#daae36',
+    'DBS11': '#9e40b5',
+    'ID1': '#c0c0c0',
+    'ID2': '#7951d0',
+    'ID3': '#41ac2f',
+    'ID4': '#73d053',
+    'ID5': '#b969e9',
+    'ID6': '#91ba2c',
+    'ID7': '#9e40b5',
+    'ID8': '#43c673',
+    'ID9': '#dd4cb0',
+    'ID10': '#3d9332',
+    'ID11': '#de77dd',
+    'ID12': '#9479e8',
+    'ID13': '#7bad47',
+    'ID14': '#487b21',
+    'ID15': '#a83292',
+    'ID16': '#83c67d',
+    'ID17': '#664db1',
+    'ID18': '#964db1',
+    'DBS12': '#E07B91',
+    'DBS19': '#4B9CD3'
+  }
+
+  # CRC colours
+  colors.update({
+    'SBS1': '#c0c0c0',
+    'SBS2': '#4ea0f4',
+    'SBS3': '#e68a00',
+    'SBS5': '#70d6ff',
+    'SBS8': '#00af91',
+    'SBS10a': '#ffc300',
+    'SBS10b': '#9b5de5',
+    'SBS10c': '#00b4d8',
+    'SBS10d': '#ff6b6b',
+    'SBS11': '#43aa8b',
+    'SBS13': '#ff9f1c',
+    'SBS15': '#5f0f40',
+    'SBS17a': '#6a4c93',
+    'SBS17b': '#cdb4db',
+    'SBS18': '#ffafcc',
+    'SBS28': '#8ecae6',
+    'SBS30': '#287271',
+    'SBS36': '#90be6d',
+    'SBS37': '#f3722c',
+    'SBS44': '#3a86ff',
+    'SBS57': '#8338ec',
+    'SBS88': '#06d6a0',
+    'SBS89': '#d73027',
+    'SBS93': '#ffbe0b',
+    'SBS94': '#f15bb5',
+    'SBS96': '#118ab2',
+    'ID1': '#4cc9f0',
+    'ID2': '#ffb703',
+    'ID5': '#7209b7',
+    'ID6': '#e76f51',
+    'ID7': '#00b894',
+    'ID14': '#ff006e',
+    'ID18': '#3f88c5',
+    'DBS2': '#0ead69',
+    'DBS3': '#ffb701',
+    'DBS4': '#3a0ca3',
+    'DBS5': '#ffafaa',
+    'DBS7': '#6a994e',
+    'DBS8': '#d73027',
+    'DBS10': '#577590',
+    'DBS12': '#ff70a6',
+    'DBS19': '#118ab2',
+  })
+
+  colors.update({
+    '1_2_dimethylhydrazine_9cffdc696a32': '#c0c0c0',
+    '1_2_dimethylhydrazine_ef5d55b18c9c': '#4ea0f4',
+    '1_4_benzoquinone_2d25052e44b1': '#e68a00',
+    '1_6_dinitropyrene_77c0ec6159e4': '#70d6ff',
+    '1_8_dinitropyrene_da7ddba98e4a': '#00af91',
+    '2_amino_1_methyl_6_phenylimidazo4_5_bpyridine_d8aa29785596': '#ffc300',
+    '2_amino_3_methyl_9h_pyrido2_3_bindole_f10529056af1': '#9b5de5',
+    '2_naphthylamine_8d0ae6c5590e': '#00b4d8',
+    '2_nitrofluorene_d908deea4861': '#ff6b6b',
+    '2_nitrotoluene_d1b70070133b': '#43aa8b',
+    '3_chloro_4_dichloromethyl_5_hydroxy_25h_furanone_d6057c2d9433': '#ff9f1c',
+    '3_chloro_4_dichloromethyl_5_hydroxy_25h_furanone_e40d11eac1ce': '#5f0f40',
+    '4_4_methylene_bis2_chloroaniline_b43861ea935b': '#6a4c93',
+    '5_methylchrysene_5b2e180a87c7': '#cdb4db',
+    '6_nitrochrysene_fd4adb4298d0': '#ffafcc',
+    '7h_dibenzoc_gcarbazole_b48114ea8899': '#8ecae6',
+    'acetaldehyde_9fde73f6e508': '#287271',
+    'acrylamide_fc03d8ed1dc2': '#90be6d',
+    'aflatoxin_b1_60c8b83450ec': '#f3722c',
+    'benzidine_5b2123a8cf0e': '#3a86ff',
+    'benzoapyrene_7_8_diol_9_10_epoxide_a940ded66b4f': '#ff0000', #'#8338ec',
+    'cadmium_chloride_4e155105529e': '#06d6a0',
+    'carboplatin_87107e8f10fc': '#d73027',
+    'cisplatin_92bd8426ea0e': '#ffbe0b',
+    'cobalt_chloride_a9e31bc7a88c': '#f15bb5',
+    'dibenza_hanthracene_86a56a54eba1': '#118ab2',
+    'dibenza_hanthracene_diol_epoxide_d1c39f8181d9': '#4cc9f0',
+    'dibenza_jacridine_ddba8930ac82': '#ffb703',
+    'dibenzoa_lpyrene_a8658ca308ee': '#7209b7',
+    'dibenzoa_lpyrene_diol_epoxide_918d83810794': '#e76f51',
+    'diethyl_sulfate_66c09d32862b': '#00b894',
+    'dmso_39bf73141acf': '#ff006e',
+    'dmso_418f69401d9a': '#3f88c5',
+    'gammaray_8a41562354d7': '#FFFF00',
+    'hydrogen_peroxide_ff64f141ad1a': '#ffb701',
+    'melphalan_dc6d858bb0a4': '#3a0ca3',
+    'methanol_23bc14314298': '#ffafaa',
+    'methyleugenol_830517b726f0': '#6a994e',
+    'mitomycin_c_1c3f32aa1d84': '#d73027',
+    'n_methyl_n_nitrosourea_9a944873342f': '#577590',
+    'n_nitrosopyrrolidine_ff630a9dde6d': '#ff70a6',
+    'nickel_chloride_70a11a6d19e0': '#118ab2',
+    'no_treatment_2d9081e4d720': '#37b5b1',
+    'no_treatment_368d8667e685': '#a14622',
+    'o_anisidine_140b3b7221ca': '#df503b',
+    'o_anisidine_9552a08d7147': '#ba6e2f',
+    'o_toluidine_0d620c5f38d0': '#589ed8',
+    'ochratoxin_a_9b5acc8297cd': '#e98261',
+    'potassium_bromate_69b10ec2b4fd': '#91ba2c',
+    'semustine_f81842a4d573': '#a19fe2',
+    'simulated_solar_radiation_04d97e27a495': '#756121',
+    'styrene_oxide_2bb934f6fd57': '#7e4a8d',
+    'sudan_i_c63d6349b4cb': '#326a38',
+    'temozolomide_8377cb5da514': '#dd8abf'
+  })
+ 
   if custom_colors is not None:
     for sc in custom_colors:
       s, c = sc.split('=')
@@ -238,7 +455,11 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       logging.info('adding indicators: %s', data_ind)
       for i in range(len(indicators)):
         # and the legend
-        cbaxes = fig.add_axes([0.91, 0.11 + 0.11 * i, 0.01, 0.1]) # left bottom width height - position of legend
+        if indicator_pos is None:
+          cbaxes = fig.add_axes([0.91, 0.11 + 0.11 * i, 0.01, 0.1]) # left bottom width height - position of legend
+        else:
+          l, b, w, h = [float(x) for x in indicator_pos]
+          cbaxes = fig.add_axes([l, b + b * i, w, h]) # left bottom width height - position of legend
         if indicators[i] in indicator_cat:
           vals = indicator_vals[indicators[i]].copy()
           tx = transpose(data_ind[indicators[i]])
@@ -434,6 +655,7 @@ if __name__ == '__main__':
   parser.add_argument('--indicators', nargs='*', required=False, help='columns to use as indicators')
   parser.add_argument('--indicator_cmaps', nargs='*', required=False, help='cmap to use for each indicator')
   parser.add_argument('--indicator_cat', nargs='*', required=False, help='categorical indicators')
+  parser.add_argument('--indicator_pos', nargs='*', required=False, help='indicator position left bottom width height')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -441,4 +663,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_fontsize, args.legend_cols, args.denormalize, args.transparent, args.colors, args.fontfamily, args.indicators, args.indicator_cmaps, args.indicator_cat, args.auto_max, args.xaxis_fontsize, args.yaxis_fontsize, args.dpi, args.linewidth)
+  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_fontsize, args.legend_cols, args.denormalize, args.transparent, args.colors, args.fontfamily, args.indicators, args.indicator_cmaps, args.indicator_cat, args.auto_max, args.xaxis_fontsize, args.yaxis_fontsize, args.dpi, args.linewidth, args.indicator_pos)
