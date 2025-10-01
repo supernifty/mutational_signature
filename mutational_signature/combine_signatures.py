@@ -20,6 +20,7 @@ def main(signatures, files):
       continue
     sigs.append(line.strip('\n').split('\t')[0])
   sigs.extend(ADDITIONAL_FIELDS)
+  #logging.debug('sigs: %s', sigs)
 
   sys.stdout.write('Sample\t{}\n'.format('\t'.join([x.replace('Signature.', '') for x in sigs])))
   
@@ -30,7 +31,8 @@ def main(signatures, files):
     result = [file.split('/')[-1]]
     vals = {}
     for line in open(file, 'r'):
-      sig, val = line.strip('\n').split('\t')
+      sig, val = line.strip('\n').split('\t')[:2]
+      #logging.debug('sig: %s, val: %s', sig, val)
       vals[sig] = val
     # generate result
     for sig in sigs:
