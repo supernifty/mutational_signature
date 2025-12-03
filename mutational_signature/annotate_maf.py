@@ -252,11 +252,11 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
   
   for line, variant in enumerate(vcf_in):
     if SKIP_ALT_CHROM and '_' in variant.CHROM:
-      logging.info('skipping %s', variant.CHROM)
+      #logging.info('skipping %s', variant.CHROM)
       continue
 
     if SKIP_M and (variant.CHROM == 'M' or variant.CHROM == 'MT'):
-      logging.info('skipping %s', variant.CHROM)
+      #logging.info('skipping %s', variant.CHROM)
       continue
 
 
