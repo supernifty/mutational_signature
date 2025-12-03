@@ -277,7 +277,11 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
     last_variant = variant
 
 def get_value(header, col, row):
-  return row[header.index(col)]
+  if '-' in col:
+    c, i = col.split('-')
+    return row[header.index(c)].split('-')[int(i)]
+  else:
+    return row[header.index(col)]
 
 def open_file(fn, is_gzipped):
   if is_gzipped:
