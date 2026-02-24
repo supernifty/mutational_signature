@@ -89,10 +89,10 @@ def compare(x_exposures, y_exposures, out, plot, x_label, y_label, title, log, m
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='compare signatures')
-  parser.add_argument('--x_exposures', required=True, help='exposures')
-  parser.add_argument('--y_exposures', required=True, help='second group of exposures')
-  parser.add_argument('--x_label', required=True, help='exposures')
-  parser.add_argument('--y_label', required=True, help='second group of exposures')
+  parser.add_argument('--x_exposures', required=True, help='exposures filename')
+  parser.add_argument('--y_exposures', required=True, help='second group of exposures filename')
+  parser.add_argument('--x_label', required=True, help='exposures colname for output')
+  parser.add_argument('--y_label', required=True, help='second colname output group of exposures')
   parser.add_argument('--title', required=False, help='title')
   parser.add_argument('--plot', required=False, help='correlation plot')
   parser.add_argument('--log', action='store_true', help='log scale')

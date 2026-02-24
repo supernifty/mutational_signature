@@ -266,7 +266,8 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     'SBS17b': '#cdb4db',
     'SBS18': '#ffafcc',
     'SBS28': '#8ecae6',
-    'SBS30': '#287271',
+    #'SBS30': '#287271',
+    'SBS30': '#909090',
     'SBS36': '#90be6d',
     'SBS37': '#f3722c',
     'SBS44': '#3a86ff',
@@ -314,10 +315,14 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     'acetaldehyde_9fde73f6e508': '#287271',
     'acrylamide_fc03d8ed1dc2': '#90be6d',
     'aflatoxin_b1_60c8b83450ec': '#f3722c',
+    'aristolochic_acid_i_b4173d75722f-dibenzoa_lpyrene_8d818fe5a7ef': '#24689b', 
+    'aristolochic_acid_ii_7cfb500c5521': '#2869ab', 
     'benzidine_5b2123a8cf0e': '#3a86ff',
     'benzoapyrene_7_8_diol_9_10_epoxide_a940ded66b4f': '#ff0000', #'#8338ec',
+    'benzoapyrene_7_8_diol_9_10_epoxide_a940ded66b4f-benzoapyrene_b931a8be44c3': '#fc9630', 
     'cadmium_chloride_4e155105529e': '#06d6a0',
-    'carboplatin_87107e8f10fc': '#d73027',
+    'carboplatin_87107e8f10fc': '#27c027', 
+    'catechol_c6f4cfad7d77': '#56789a', 
     'cisplatin_92bd8426ea0e': '#ffbe0b',
     'cobalt_chloride_a9e31bc7a88c': '#f15bb5',
     'dibenza_hanthracene_86a56a54eba1': '#118ab2',
@@ -326,15 +331,20 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     'dibenzoa_lpyrene_a8658ca308ee': '#7209b7',
     'dibenzoa_lpyrene_diol_epoxide_918d83810794': '#e76f51',
     'diethyl_sulfate_66c09d32862b': '#00b894',
+    'dimethyl_sulfate_31311db64fc6': '#a98765', 
     'dmso_39bf73141acf': '#ff006e',
     'dmso_418f69401d9a': '#3f88c5',
+    'formaldehyde_8c36e95b481c': '#4fffb5', 
     'gammaray_8a41562354d7': '#FFFF00',
+    'glycidamide_8e1c87cf773d': '#c49033', 
     'hydrogen_peroxide_ff64f141ad1a': '#ffb701',
+    'lead_nitrate_3ff280a61a91': '#333333', 
     'melphalan_dc6d858bb0a4': '#3a0ca3',
     'methanol_23bc14314298': '#ffafaa',
     'methyleugenol_830517b726f0': '#6a994e',
     'mitomycin_c_1c3f32aa1d84': '#d73027',
     'n_methyl_n_nitrosourea_9a944873342f': '#577590',
+    'n_methyl_n_nitrosourea_9a944873342f-temozolomide_8377cb5da514': '#579075',
     'n_nitrosopyrrolidine_ff630a9dde6d': '#ff70a6',
     'nickel_chloride_70a11a6d19e0': '#118ab2',
     'no_treatment_2d9081e4d720': '#37b5b1',
@@ -460,6 +470,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
         else:
           l, b, w, h = [float(x) for x in indicator_pos]
           cbaxes = fig.add_axes([l, b + b * i, w, h]) # left bottom width height - position of legend
+
         if indicators[i] in indicator_cat:
           vals = indicator_vals[indicators[i]].copy()
           tx = transpose(data_ind[indicators[i]])
@@ -652,7 +663,7 @@ if __name__ == '__main__':
   parser.add_argument('--denormalize', action='store_true', help='do not constrain to 100 percent')
   parser.add_argument('--auto_max', action='store_true', help='do not set max to 100 percent')
   parser.add_argument('--transparent', action='store_true', help='transparent')
-  parser.add_argument('--indicators', nargs='*', required=False, help='columns to use as indicators')
+  parser.add_argument('--indicators', nargs='*', required=False, help='columns to use as indicators. all indicators included here')
   parser.add_argument('--indicator_cmaps', nargs='*', required=False, help='cmap to use for each indicator')
   parser.add_argument('--indicator_cat', nargs='*', required=False, help='categorical indicators')
   parser.add_argument('--indicator_pos', nargs='*', required=False, help='indicator position left bottom width height')
