@@ -39,7 +39,7 @@ def transpose(m):
   '''
   return [[x[0] for x in m]]
 
-def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_fontsize=None, legend_cols=1, denormalize=False, transparent=False, custom_colors=None, fontfamily=None, indicators=None, indicator_cmaps=None, indicator_cat=None, auto_max=False, xaxis_fontsize=None, yaxis_fontsize=None, dpi=300, linewidth=None, indicator_pos=None):
+def plot(sigs, threshold, order, target, show_name, descriptions, description_threshold, highlight, xlabel=None, ylabel=None, title=None, vertical=False, figure_height=None, figure_width=None, legend_height=None, legend_width=None, legend_y_offset=None, fontsize=12, legend_fontsize=None, legend_cols=1, denormalize=False, transparent=False, custom_colors=None, fontfamily=None, indicators=None, indicator_cmaps=None, indicator_cat=None, auto_max=False, xaxis_fontsize=None, yaxis_fontsize=None, dpi=300, linewidth=None, indicator_pos=None, indicator_separators=None, indicator_legend_left=None, indicator_legend_width=None, renormalize=False):
   logging.info('reading from stdin with threshold %f and order %s...', threshold, order)
 
   import matplotlib # again!
@@ -61,9 +61,14 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     indicator_cat = []
   else:
     indicator_vals = collections.defaultdict(list)
+  if indicator_separators is None:
+    indicator_separators = []
+
+  # columns needed only for separator line computation (not displayed as indicator strips)
+  sep_only = [s for s in indicator_separators if s not in indicators]
 
   if order is None:
-    order = [x for x in header[1:] if x not in indicators]
+    order = [x for x in header[1:] if x not in indicators and x not in sep_only]
 
   logging.info('plotting up to %i sig: %s...', len(order), order)
 
@@ -115,12 +120,37 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
             logging.debug('cannot convert value for %s on row %i', i, idx)
             data_ind[i].append([0.0])
 
+    # collect separator-only columns (not displayed as indicator strips)
+    for s in sep_only:
+      if s in header:
+        data_ind[s].append(row[header.index(s)])
+      else:
+        logging.warning('indicator_separators: %s not in header', s)
+        data_ind[s].append(None)
+
   # sort the categorical indicators
   for i in indicator_cat:
     indicator_vals[i] = sorted(indicator_vals[i])
     data_ind[i] = [ [indicator_vals[i].index(x)] for x in data_ind[i] ]
 
   logging.info('saw %i sigs and data_ind: %s...', len(seen_index), data_ind)
+
+  # find sample indices where any of the specified separators changes value from the previous sample
+  change_points = set()
+  if indicator_separators:
+    for ind in indicator_separators:
+      if ind not in data_ind:
+        logging.warning('indicator_separators: %s not found in data, skipping', ind)
+        continue
+      ind_data = data_ind[ind]
+      for j in range(1, len(ind_data)):
+        if ind_data[j] != ind_data[j - 1]:
+          change_points.add(j)
+    logging.info('indicator change points: %s', sorted(change_points))
+
+  # capture per-sample totals (all sigs, including below-threshold) before filtering
+  if renormalize:
+    sample_totals = [sum(row) for row in data]
 
   # filter on seen
   order = [ o for i, o in enumerate(order) if i in seen_index ]
@@ -132,6 +162,26 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     new_row = [ x for idx, x in enumerate(row) if idx in seen_index ]
     filtered.append(new_row)
   data = filtered
+
+  if renormalize:
+    renormed = []
+    other_vals = []
+    for row, total in zip(data, sample_totals):
+      other = max(0.0, total - sum(row))
+      if total > 0:
+        renormed.append([x / total for x in row])
+        other_vals.append(other / total)
+      else:
+        renormed.append(row)
+        other_vals.append(0.0)
+    data = renormed
+    order = list(order) + ['Other']
+    if descriptions is not None:
+      descriptions = list(descriptions) + ['']
+    for row, other in zip(data, other_vals):
+      row.append(other)
+    logging.info('renormalized %i rows; Other fraction range [%.3f, %.3f]',
+                 len(data), min(other_vals), max(other_vals))
 
   #colors = {"SBS1": "#c0c0c0", "SBS2": "#41ac2f", "SBS3": "#7951d0", "SBS4": "#73d053", "SBS5": "#b969e9", "SBS6": "#3176ae", "SBS7a": "#b4b42f", "SBS7b": "#5276ec", "SBS7c": "#daae36", "SBS7d": "#9e40b5", "SBS8": "#43c673", "SBS9": "#dd4cb0", "SBS10a": "#3d9332", "SBS10b": "#de77dd", "SBS10c": "#9e77dd", "SBS10d": "#7e77dd", "SBS11": "#7bad47", "SBS12": "#9479e8", "SBS13": "#487b21", "SBS14": "#a83292", "SBS15": "#664db1", "SBS16": "#83c67d", "SBS17a": "#e18d28", "SBS17b": "#588de5", "SBS18": "#e2672a", "SBS19": "#34c7dd", "SBS20": "#646cc1", "SBS21": "#3b63ac", "SBS22": "#d74587", "SBS23": "#428647", "SBS24": "#7b51a7", "SBS25": "#505099", "SBS26": "#58b5e1", "SBS27": "#a27f1f", "SBS28": "#5acdaf", "SBS29": "#dca653", "SBS30": "#b4ba64", "SBS31": "#7d8529", "SBS32": "#bf8ade", "SBS33": "#516615", "SBS34": "#b65da7", "SBS35": "#57a87a", "SBS36": "#c84249", "SBS37": "#37b5b1", "SBS38": "#a14622", "SBS39": "#df503b", "SBS40": "#ba6e2f", "SBS41": "#589ed8", "SBS42": "#e98261", "SBS43": "#91ba2c", "SBS44": "#656413", "SBS45": "#a19fe2", "SBS46": "#756121", "SBS47": "#7e4a8d", "SBS48": "#326a38", "SBS49": "#dd8abf", "SBS50": "#1a6447", "SBS51": "#e78492", "SBS52": "#30876c", "SBS53": "#9d4d7c", "SBS54": "#919d5b", "SBS55": "#9d70ac", "SBS56": "#5b6f34", "SBS57": "#65659c", "SBS58": "#c9a865", "SBS59": "#a1455d", "SBS60": "#5e622c", "SBS84": "#b66057", "SBS85": "#dca173", 'SBS86': '#ffa600', 'SBS87': '#ffac73', 'SBS88': '#f95d6a', 'SBS89': '#d45087', 'SBS90': '#a05195', 'SBS91': '#665191', 'SBS92': '#2f4b7c', 'SBS93': '#003f5c', 'SBS94': '#123456', 'SBS96': '#64CE74', "DBS1": "#855524", "DBS2": "#9f7846", "DBS3": "#7951d0", "DBS4": "#73d053", "DBS5": "#b969e9", "DBS6": "#91ba2c", "DBS7": "#3656ca", "DBS8": "#b4b42f", "DBS9": "#5276ec", "DBS10": "#daae36", "DBS11": "#9e40b5", "DBS12": "#E07B91", "DBS19": "#4B9CD3", "ID1": "#c0c0c0", "ID2": "#7951d0", "ID3": "#41ac2f", "ID4": "#73d053", "ID5": "#b969e9", "ID6": "#91ba2c", "ID7": "#9e40b5", "ID8": "#43c673", "ID9": "#dd4cb0", "ID10": "#3d9332", "ID11": "#de77dd", "ID12": "#9479e8", "ID13": "#7bad47", "ID14": "#487b21", "ID15": "#a83292", "ID16": "#83c67d", "ID17": "#664db1", "ID18": "#964db1", "1": "#b66057", "2": "#dca173", "3": "#855524", "4": "#9f7846", "5": "#7951d0", "6": "#73d053", "7": "#b969e9", "8": "#91ba2c", "9": "#3656ca", "10": "#b4b42f", "11": "#5276ec", "12": "#daae36", "13": "#9e40b5", "14": "#de3860", "15": "#41ac2f", "16": "#7951d0", "17": "#73d053", "18": "#b969e9", "19": "#91ba2c", "20": "#9e40b5", "21": "#43c673", "22": "#dd4cb0", "23": "#3d9332", "24": "#de77dd", "25": "#7bad47", "26": "#9479e8", "27": "#487b21", "28": "#a83292", "29": "#83c67d", "30": "#664db1"}
 
@@ -250,7 +300,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
 
   # CRC colours
   colors.update({
-    'SBS1': '#c0c0c0',
+    'SBS1': '#b0b0b0',
     'SBS2': '#4ea0f4',
     'SBS3': '#e68a00',
     'SBS5': '#70d6ff',
@@ -318,7 +368,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     'aristolochic_acid_i_b4173d75722f-dibenzoa_lpyrene_8d818fe5a7ef': '#24689b', 
     'aristolochic_acid_ii_7cfb500c5521': '#2869ab', 
     'benzidine_5b2123a8cf0e': '#3a86ff',
-    'benzoapyrene_7_8_diol_9_10_epoxide_a940ded66b4f': '#ff0000', #'#8338ec',
+    'benzoapyrene_7_8_diol_9_10_epoxide_a940ded66b4f': '#ff681f', #'#8338ec',
     'benzoapyrene_7_8_diol_9_10_epoxide_a940ded66b4f-benzoapyrene_b931a8be44c3': '#fc9630', 
     'cadmium_chloride_4e155105529e': '#06d6a0',
     'carboplatin_87107e8f10fc': '#27c027', 
@@ -358,7 +408,8 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     'simulated_solar_radiation_04d97e27a495': '#756121',
     'styrene_oxide_2bb934f6fd57': '#7e4a8d',
     'sudan_i_c63d6349b4cb': '#326a38',
-    'temozolomide_8377cb5da514': '#dd8abf'
+    'temozolomide_8377cb5da514': '#dd8abf',
+    'Other': '#dfdfdf',
   })
  
   if custom_colors is not None:
@@ -431,7 +482,13 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
         alpha = 0.5
   
       # choose a new color
-      color = colors[order[i]]
+      if order[i] in colors:
+        color = colors[order[i]]
+      else:
+        for c in colors:
+          if c.startswith(order[i]):
+            color = colors[c]
+            break
       logging.debug('sample_id %s vals %s bottom %s', sample_id, vals, bottom)
 
       if show_name and descriptions is not None and descriptions[i] != '':
@@ -463,13 +520,22 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
 
     if len(indicators) > 0:
       logging.info('adding indicators: %s', data_ind)
+      cb_bottom = 0.11
       for i in range(len(indicators)):
         # and the legend
+        if indicators[i] in indicator_cat:
+          n_cats = len(indicator_vals[indicators[i]])
+          cb_height = max(0.05, n_cats * (legend_fontsize or fontsize) * 1.5 / (72 * fig.get_figheight()))
+        else:
+          cb_height = 0.1
         if indicator_pos is None:
-          cbaxes = fig.add_axes([0.91, 0.11 + 0.11 * i, 0.01, 0.1]) # left bottom width height - position of legend
+          cb_left = indicator_legend_left if indicator_legend_left is not None else 0.91
+          cb_width = indicator_legend_width if indicator_legend_width is not None else 0.01
+          cbaxes = fig.add_axes([cb_left, cb_bottom, cb_width, cb_height]) # left bottom width height - position of legend
         else:
           l, b, w, h = [float(x) for x in indicator_pos]
           cbaxes = fig.add_axes([l, b + b * i, w, h]) # left bottom width height - position of legend
+        cb_bottom += cb_height + 0.01
 
         if indicators[i] in indicator_cat:
           vals = indicator_vals[indicators[i]].copy()
@@ -498,6 +564,11 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
         lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01, 1.0), borderaxespad=0, ncol=legend_cols)
 
     lgd.get_frame().set_edgecolor('#000000')
+
+    for cp in change_points:
+      ax.axvline(x=cp - 0.5, color='black', linewidth=1, zorder=5)
+      for a in axis:
+        a.axvline(x=cp - 0.5, color='black', linewidth=1, zorder=5)
 
     #fig.savefig(target, transparent=True, dpi=DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
     logging.info('writing to %s with dpi %i', target, dpi)
@@ -540,6 +611,8 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
 
     data = list(reversed(data))
     samples = list(reversed(samples))
+    for ind in indicators + sep_only:
+      data_ind[ind] = list(reversed(data_ind[ind]))
 
     patch_handles = []
     left = np.zeros(len(samples))
@@ -555,8 +628,14 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
         alpha = 0.5
   
       # choose a new color
-      color = colors[order[i]]
-  
+      if order[i] in colors:
+        color = colors[order[i]]
+      else:
+        for c in colors:
+          if c.startswith(order[i]):
+            color = colors[c]
+            break
+   
       if show_name and descriptions is not None and descriptions[i] != '':
         patch_handles.append(ax.barh(sample_id, vals, color=color, alpha=alpha, align='center', left=left, label='{} - {}'.format(order[i], descriptions[i])))
       else:
@@ -605,9 +684,18 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
     
     if len(indicators) > 0:
       logging.info('adding indicators: %s', data_ind)
+      cb_bottom = 0.11
       for i in range(len(indicators)):
         # and the legend
-        cbaxes = fig.add_axes([0.91, 0.11 + 0.11 * i, 0.01, 0.1]) # left bottom width height - position of legend
+        if indicators[i] in indicator_cat:
+          n_cats = len(indicator_vals[indicators[i]])
+          cb_height = max(0.05, n_cats * (legend_fontsize or fontsize) * 1.5 / (72 * fig.get_figheight()))
+        else:
+          cb_height = 0.1
+        cb_left = indicator_legend_left if indicator_legend_left is not None else 0.91
+        cb_width = indicator_legend_width if indicator_legend_width is not None else 0.01
+        cbaxes = fig.add_axes([cb_left, cb_bottom, cb_width, cb_height]) # left bottom width height - position of legend
+        cb_bottom += cb_height + 0.01
         if indicators[i] in indicator_cat:
           vals = indicator_vals[indicators[i]].copy()
           im = axis[i].imshow(data_ind[indicators[i]], cmap=plt.cm.get_cmap(indicator_cmaps[i], len(vals)), aspect="auto")
@@ -627,7 +715,13 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
       logging.info('no indicators to add')
       lgd = ax.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.01,1.0), borderaxespad=0, ncol=legend_cols)
     lgd.get_frame().set_edgecolor('#000000')
- 
+
+    N = len(samples)
+    for cp in change_points:
+      ax.axhline(y=N - cp - 0.5, color='black', linewidth=1, zorder=5)
+      for a in axis:
+        a.axhline(y=N - cp - 0.5, color='black', linewidth=1, zorder=5)
+
     logging.info('writing to %s with dpi %i', target, dpi)
     ax.margins(x=0)
     fig.savefig(target, transparent=transparent, dpi=dpi, bbox_extra_artists=(lgd,), bbox_inches='tight')
@@ -667,6 +761,10 @@ if __name__ == '__main__':
   parser.add_argument('--indicator_cmaps', nargs='*', required=False, help='cmap to use for each indicator')
   parser.add_argument('--indicator_cat', nargs='*', required=False, help='categorical indicators')
   parser.add_argument('--indicator_pos', nargs='*', required=False, help='indicator position left bottom width height')
+  parser.add_argument('--indicator_legend_left', required=False, type=float, help='left position of indicator colorbar in figure coordinates (default 0.91)')
+  parser.add_argument('--indicator_legend_width', required=False, type=float, help='width of indicator colorbar in figure coordinates (default 0.01)')
+  parser.add_argument('--indicator_separators', nargs='+', required=False, help='draw black separator lines where any of the named indicators changes value')
+  parser.add_argument('--renormalize', action='store_true', help='renormalise each sample so signatures sum to 100%%')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -674,4 +772,4 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
-  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_fontsize, args.legend_cols, args.denormalize, args.transparent, args.colors, args.fontfamily, args.indicators, args.indicator_cmaps, args.indicator_cat, args.auto_max, args.xaxis_fontsize, args.yaxis_fontsize, args.dpi, args.linewidth, args.indicator_pos)
+  plot(csv.reader(sys.stdin, delimiter='\t'), args.threshold, args.order, args.target, args.show_signature, args.descriptions, args.description_threshold, args.highlight, args.xlabel, args.ylabel, args.title, args.vertical, args.height, args.width, args.legend_height, args.legend_width, args.legend_y_offset, args.fontsize, args.legend_fontsize, args.legend_cols, args.denormalize, args.transparent, args.colors, args.fontfamily, args.indicators, args.indicator_cmaps, args.indicator_cat, args.auto_max, args.xaxis_fontsize, args.yaxis_fontsize, args.dpi, args.linewidth, args.indicator_pos, args.indicator_separators, args.indicator_legend_left, args.indicator_legend_width, args.renormalize)
