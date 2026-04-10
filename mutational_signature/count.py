@@ -135,17 +135,19 @@ INDELS_89 = set([
   'Complex'
 ])
 
-def normalize_doublet(v):
+def normalize_doublet(v, strand_tx, strand_exon):
   if v not in DOUBLETS:
     # reverse it
     try:
       v = '{}{}>{}{}'.format(COMP[v[1]], COMP[v[0]], COMP[v[4]], COMP[v[3]])
+      return v, COMP_TX[strand_tx], COMP_TX[strand_exon]
     except:
       logging.warning('something weird with doublet %s', v)
 
     if v not in DOUBLETS:
       logging.warning('failed to solve doublet %s', v)
-  return v
+  # v was a normal doublet
+  return v, strand_tx, strand_exon
 
 def update_chroms(required, chroms, genome, next_chrom):
   '''
@@ -306,10 +308,10 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     elif len(intersections) > 1:
       logging.debug('%i intersections at %s:%i', len(intersections), no_chr(variant.CHROM), variant.POS) # can't decide
       # pick the first
-      exon_strand = list(intersections)[0][2]
+      exon_strand = list(intersections)[0][2] # + or -
       logging.debug('%i intersections at %s:%i: first is %s', len(intersections), no_chr(variant.CHROM), variant.POS, exon_strand) # can't decide
     else:
-      exon_strand = list(intersections)[0][2]
+      exon_strand = list(intersections)[0][2] # + or -
 
   # determine transcript if relevant
   if transcripts is not None and no_chr(variant.CHROM) in transcripts:
@@ -318,10 +320,10 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
       logging.debug('%s:%i is not coding', no_chr(variant.CHROM), variant.POS)
     elif len(intersections) > 1:
       logging.debug('%i multiple intersections at %s:%i', len(intersections), no_chr(variant.CHROM), variant.POS) # can't decide
-      tx_strand = list(intersections)[0][2]
+      tx_strand = list(intersections)[0][2] # + or -
       logging.debug('%i multiple intersections at %s:%i: first is %s', len(intersections), no_chr(variant.CHROM), variant.POS, tx_strand) # can't decide
     else:
-      tx_strand = list(intersections)[0][2]
+      tx_strand = list(intersections)[0][2] # + or -
 
   # determine weight if relevant
   if weight is None:
@@ -362,7 +364,7 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
     return
     
   v = '{}>{}'.format(fragment, alt) # TODO multiallele
-  v, tx_strand, exon_strand = normalize_sbs(v, tx_strand, exon_strand)
+  v, tx_strand, exon_strand = normalize_sbs(v, tx_strand, exon_strand) # strands will be none, + or -
   counts[v] += count_weight
   if tx_strand is not None:
     tx_counts['{}/{}'.format(v, tx_strand)] += count_weight
@@ -376,8 +378,13 @@ def update_counts(counts, variant, last_variant, chroms, doublets, indels, just_
       if len(doublet) != 5:
         logging.warning('skipping doublet %s at %s:%i', doublet, no_chr(variant.CHROM), variant.POS)
       else:
-        doublet = normalize_doublet(doublet)
+        doublet, tx_strand, exon_strand = normalize_doublet(doublet, tx_strand, exon_strand)
         counts[doublet] += count_weight
+        if tx_strand is not None:
+          tx_counts['{}/{}'.format(doublet, tx_strand)] += count_weight
+        if exon_strand is not None:
+          tx_counts['{}|{}'.format(doublet, exon_strand)] += count_weight
+
         logging.debug('doublet found at %s:%s: %s', no_chr(variant.CHROM), variant.POS, doublet)
 
 def multi_count(genome_fh, vcf_in, outs=None, chroms=None, variant_filters=None, doublets=False, indels=False, just_indels=False, mer=3, weight=None):
@@ -539,10 +546,10 @@ def count(genome_fh, vcf_in, out=None, chroms=None, variant_filter=None, doublet
     out.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format('Variation', 'Count', 'Probability', 'CodingTx', 'NonCodingTx', 'TxP', 'CodingExon', 'NonCodingExon', 'ExonP'))
 
     for k in sorted(counts):
-      codingTx = tx_counts['{}/{}'.format(k, '+')]
-      nonCodingTx = tx_counts['{}/{}'.format(k, '-')]
-      codingExon = tx_counts['{}|{}'.format(k, '+')]
-      nonCodingExon = tx_counts['{}|{}'.format(k, '-')]
+      nonCodingTx = tx_counts['{}/{}'.format(k, '+')] # turns out + is non-transcribed
+      codingTx = tx_counts['{}/{}'.format(k, '-')] # - is transcribed
+      nonCodingExon = tx_counts['{}|{}'.format(k, '+')] # + is noncoding
+      codingExon = tx_counts['{}|{}'.format(k, '-')] # - is coding
 
       out.write('{}\t{}\t{:.6f}\t{}\t{}\t{:.6f}\t{}\t{}\t{:.6f}\n'.format(k, counts[k], counts[k] / total_count, 
         codingTx, nonCodingTx, scipy.stats.binomtest(k=codingTx, n=max(1, codingTx + nonCodingTx)).pvalue,
