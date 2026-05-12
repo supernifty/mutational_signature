@@ -13,8 +13,6 @@ import sys
 
 import numpy
 
-import plotme.box
-
 import mutational_signature.decompose
 
 MAX_FRACTION=0.5
@@ -115,4 +113,3 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
   main(sys.stdout, args.definition, args.count_files, args.replicates, args.downsample_style, args.downsample_points, args.aggregate, args.start, args.count)
-

@@ -13,8 +13,6 @@ import sys
 
 import numpy
 
-import plotme.box
-
 import mutational_signature.decompose
 
 def main(signatures, signature_sum=None):
@@ -83,4 +81,3 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
   main(args.signatures, signature_sum=args.signature_sum)
-

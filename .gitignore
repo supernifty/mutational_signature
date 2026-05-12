@@ -1,1 +1,15 @@
 *.sw?
+.DS_Store
+.pytest_cache/
+.python-version
+.venv/
+__pycache__/
+*.egg-info/
+build/
+dist/
+htmlcov/
+*.count
+*.counts
+*.exposures
+*.png
+*.svg

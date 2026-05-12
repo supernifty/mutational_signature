@@ -13,8 +13,6 @@ import sys
 
 import numpy
 
-import plotme.box
-
 import mutational_signature.decompose
 
 def main(signatures, signature_sum=None, variant_count=10, threshold=0.5, bootstrap_count=1000):
@@ -101,4 +99,3 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
   main(args.signatures, signature_sum=args.signature_sum, variant_count=args.variant_count, threshold=args.threshold, bootstrap_count=args.bootstrap_count)
-

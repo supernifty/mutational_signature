@@ -1,0 +1,100 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mutational-signature"
+version = "0.9.0"
+description = "Command-line tools for mutational signature counting, decomposition, and plotting."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "BSD-3-Clause"
+authors = [
+  { name = "Peter Georgeson" }
+]
+license-files = ["LICENSE.md"]
+keywords = ["bioinformatics", "genomics", "mutational-signatures", "vcf", "cosmic"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+  "cyvcf2",
+  "intervaltree",
+  "matplotlib",
+  "numpy",
+  "scikit-learn",
+  "scipy",
+]
+
+[project.optional-dependencies]
+dev = [
+  "build",
+  "pytest",
+  "setuptools>=69",
+  "wheel",
+]
+plotme = [
+  "plotme @ git+https://github.com/supernifty/plotme",
+]
+
+[project.urls]
+Homepage = "https://github.com/supernifty/mutational_signature"
+Repository = "https://github.com/supernifty/mutational_signature"
+Issues = "https://github.com/supernifty/mutational_signature/issues"
+
+[project.scripts]
+adjust-counts = "mutational_signature.cli:adjust_counts"
+annotate-context = "mutational_signature.cli:annotate_context"
+annotate-context-summary = "mutational_signature.cli:annotate_context_summary"
+annotate-maf = "mutational_signature.cli:annotate_maf"
+assign-signatures = "mutational_signature.cli:assign_signatures"
+bootstrap = "mutational_signature.cli:bootstrap"
+bootstrap-simple = "mutational_signature.cli:bootstrap_simple"
+combine-counts = "mutational_signature.cli:combine_counts"
+combine-signatures = "mutational_signature.cli:combine_signatures"
+compare-exposures = "mutational_signature.cli:compare_exposures"
+compare-exposures-to-signatures = "mutational_signature.cli:compare_exposures_to_signatures"
+compare-signatures = "mutational_signature.cli:compare_signatures"
+context-best-sig = "mutational_signature.cli:context_best_sig"
+context-likelihood = "mutational_signature.cli:context_likelihood"
+convert-signatures = "mutational_signature.cli:convert"
+count-contexts = "mutational_signature.cli:count_contexts"
+count = "mutational_signature.cli:count"
+count-indels = "mutational_signature.cli:count_indels"
+count-maf-indels = "mutational_signature.cli:count_maf_indels"
+decompose = "mutational_signature.cli:decompose"
+decompose-bulk = "mutational_signature.cli:decompose_bulk"
+decompose-likelihood = "mutational_signature.cli:decompose_likelihood"
+exclude-contexts = "mutational_signature.cli:exclude_contexts"
+extended-context = "mutational_signature.cli:extended_context"
+generate-signatures = "mutational_signature.cli:generate"
+histograms = "mutational_signature.cli:histograms"
+linear-dependence = "mutational_signature.cli:linear_dependence"
+plot-components = "mutational_signature.cli:plot_components"
+plot-counts = "mutational_signature.cli:plot_counts"
+plot-sigs = "mutational_signature.cli:plot_sigs"
+positive-by-chance = "mutational_signature.cli:positive_by_chance"
+primary-context = "mutational_signature.cli:primary_context"
+reduce-similarity = "mutational_signature.cli:reduce_similarity"
+refine-signatures = "mutational_signature.cli:refine_signatures"
+simulate-signatures = "mutational_signature.cli:simulate"
+stability = "mutational_signature.cli:stability"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["mutational_signature*"]
+
+[tool.setuptools.package-data]
+mutational_signature = ["data/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

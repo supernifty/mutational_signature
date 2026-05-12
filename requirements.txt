@@ -1,9 +1,1 @@
-numpy
-cython
-cyvcf2
-intervaltree
-matplotlib
-numpy
-scikit-learn
-sklearn
-git+https://github.com/supernifty/plotme
+-e .[dev]

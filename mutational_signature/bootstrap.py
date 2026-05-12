@@ -13,8 +13,6 @@ import sys
 
 import numpy
 
-import plotme.box
-
 import mutational_signature.decompose
 
 def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possible=True, out=sys.stdout, subsample=1.0, subsample_count=None, plot=None, plot_title=None, error_probability=0.01, signature_sum=None, oversample=1.0):
@@ -112,6 +110,10 @@ def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possibl
     out.write('{}\t{:.3f}\t{:.3f}\t{:.3f}\t{}\t{:.3f}\t{:.3f}\t{}\n'.format(sig, point_signatures[sig], numpy.mean(bootstrap_signatures[sig]), numpy.std(bootstrap_signatures[sig]), '\t'.join(['{:.3f}'.format(v) for v in values]), min(bootstrap_signatures[sig]), max(bootstrap_signatures[sig]), ','.join(['{:.2f}'.format(x) for x in bootstrap_signatures[sig]])))
 
   if plot is not None:
+    try:
+      import plotme.box
+    except ImportError as exc:
+      raise SystemExit("plot output requires the optional dependency set: pip install .[plotme]") from exc
     logging.info('writing boxplots to %s...', plot)
     fh = io.StringIO()
     fh.write('x\ty\tz\n')
@@ -154,4 +156,3 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
   main(args.signatures, args.count, args.confidence, subsample=args.subsample, subsample_count=args.subsample_count, all_contexts_possible=args.all_contexts_possible, plot=args.plot, plot_title=args.plot_title, error_probability=args.error_probability, signature_sum=args.signature_sum, oversample=args.oversample)
-

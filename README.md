@@ -1,118 +1,149 @@
+# Mutational Signature
 
-## Mutational Signature Calculator
-An easy to install and run mutational signature calculator.
+Command-line tools for counting mutational contexts, decomposing samples into reference signatures, and generating publication-oriented plots.
 
-This library estimates exposures, given a list of existing signatures.
+The repository now supports a modern `uv` workflow for development while remaining installable with standard `pip`.
 
-## Installation
+## What This Repository Provides
 
-On spartan:
-```
-module load Python/3.6.4-intel-2017.u2
-module load cURL/7.60.0-spartan_gcc-6.2.0
-```
+- `count`: derive SBS, DBS, or indel context counts from VCF or MAF input
+- `decompose`: fit a sample's counts against a reference signature matrix
+- `plot-counts`: render SBS or indel context plots
+- `plot-components`: render signature exposure panels across samples
+- utility commands for bootstrap analysis, similarity checks, context annotation, and signature conversion
 
-```
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+Reference signature files are bundled under [`mutational_signature/data`](mutational_signature/data).
 
-## Inputs
-* genome.fa
-* sample.vcf
-* signatures.txt
+## Quickstart
 
-## Usage
-First calculate counts:
-```
-python count.py --genome genome.fa --vcf sample.vcf > sample.count
+### Recommended: `uv`
+
+```bash
+uv sync --extra dev
+uv run count --genome example/mini_reference.fa --vcf example/mini_sample.vcf > mini.count
+uv run decompose --signatures example/mini_signatures.tsv --counts mini.count > mini.exposures
+uv run plot-counts --target mini.png < mini.count
 ```
 
-Make a signature plot:
-```
-python plot_counts.py --target sample.png < sample.count
+### Standard `pip`
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install .
+count --genome example/mini_reference.fa --vcf example/mini_sample.vcf > mini.count
+decompose --signatures example/mini_signatures.tsv --counts mini.count > mini.exposures
+plot-counts --target mini.png < mini.count
 ```
 
-Find the most likely combination of signatures:
-```
-python decompose.py --signatures signatures.txt --counts sample.count > calculation.txt
+If you need the optional bootstrap boxplots backed by `plotme`, install the extra:
+
+```bash
+uv sync --extra plotme
 ```
 
-Generate a signature plot for multiple samples
-```
-python plot_components.py --threshold 0.0 --show_signature --target out.png --order '1' '2' '3' '4' '5' '6' '7' '8' '9' '10' '11' '12' '13' '14' '15' '16' '17' '18' '19' '20' '21' '22' '23' '24' '25' '26' '27' '28' '29' '30' --descriptions 'age related' 'APOBEC' 'double-strand break-repair failure' 'tobacco' '' 'MMRd' 'UV exposure' '' '' 'POLE mutations' 'alkylating agents' '' 'APOBEC' '' 'MMRd' '' '' '' '' 'MMRd' 'unknown aetiology' 'aristolochic acid' 'unknown aetiology' 'aflatoxin exposure' '' 'MMRd' '' 'unknown aetiology' 'tobacco' '' < example/sample.sigs
+or
+
+```bash
+python -m pip install .[plotme]
 ```
 
-Convert a downloaded signature file from COSMIC to format for this software
-```
-python mutational_signature/convert.py --conversion sbs32 < ~/sigProfiler_SBS_TCGA_WES_ColoRect-AdenoCa_local_signatures.csv > data/wes-crc.csv
+## End-to-End Example
+
+The [`example`](example) directory contains a small self-contained workflow:
+
+- [`mini_reference.fa`](example/mini_reference.fa)
+- [`mini_sample.vcf`](example/mini_sample.vcf)
+- [`mini_signatures.tsv`](example/mini_signatures.tsv)
+- [`README.md`](example/README.md)
+
+That example is also exercised in automated tests.
+
+## Common Workflows
+
+### Count contexts from a VCF
+
+```bash
+uv run count --genome genome.fa --vcf sample.vcf.gz > sample.count
 ```
 
-Compare sets of signatures for similarity:
-```
-python mutational_signature/compare_signatures.py --signatures data/signatures_cosmic_v3_sbs.txt --signatures2 data/wes-crc.csv
+### Decompose counts against bundled COSMIC signatures
+
+```bash
+uv run decompose \
+  --signatures mutational_signature/data/signatures_cosmic_v3_sbs.txt \
+  --counts sample.count > sample.exposures
 ```
 
-Count available contexts for potential exposure adjustment:
-```
-python mutational_signature/count_contexts.py --genome genome.fa --bed regions.wgs.bed > opportunity.sbs.wgs.tsv
+### Plot SBS context counts
+
+```bash
+uv run plot-counts --target sample.sbs.png < sample.count
 ```
 
-Adjust counts for different captures based on opportunity
-```
-python mutational_signature/adjust_counts.py --adjust_from opportunity.sbs.cog.tsv --adjust_to opportunity.sbs.exome.tsv --verbose < sample.count
+### Plot signature exposures across multiple samples
+
+```bash
+uv run plot-components --target cohort.exposures.png < combined.exposures.tsv
 ```
 
-Assign artefact probability
-```
+### Count context opportunity in target regions
+
+```bash
+uv run count-contexts --genome genome.fa --bed regions.bed > opportunity.tsv
 ```
 
-Annotate VCF with context and extended sequence
-```
-python mutational_signature/annotate_context.py --genome genome.fa --vcf example/sample.vcf.gz --sequence 6 > x.vcf
-python mutational_signature/annotate_context_summary.py --vcfs x.vcf --sequence 6 --lengths 3 2 1 > y.tsv
+### Adjust counts for capture opportunity
+
+```bash
+uv run adjust-counts \
+  --adjust_from opportunity.wgs.tsv \
+  --adjust_to opportunity.panel.tsv < sample.count
 ```
 
-### Generate de novo signatures
-```
-python mutational_signature/generate.py \
-  --counts *.counts \
-  --components 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 \
-  --compare_to data/signatures_cosmic_v3_sbs.txt \
-  --compare_to_matches 1 \
-  --min_mutation_proportion 0.01 \
-  --bootstraps 100 \
-  --bootstrap_plot 'bootstraps.png' \
-  --component_plot 'component.png'
+### Convert downloaded signatures into repository format
+
+```bash
+uv run convert-signatures --conversion sbs32 < downloaded_signatures.csv > converted.tsv
 ```
 
-### Backward selection based on cosine error:
-```
-python mutational_signature/refine_signatures.py \
-  --signatures data/signatures_cosmic_v3.1_sbs.txt \
-  --verbose < counts_file
+## Development
+
+```bash
+uv sync --extra dev
+uv run pytest
+uv build
 ```
 
-### Signature distribution panel
-```
-python mutational_signature/histograms.py --exclude_below 0.05 --exposures *.exposures --target hists.sbs.png --cols 6
+The compatibility path for environments that do not use `uv` is:
+
+```bash
+python -m pip install -e .[dev]
+pytest
+python -m build
 ```
 
-### Simulation
-```
-python mutational_signature/simulate.py --verbose --n 1 --sigdefs data/signatures_cosmic_v3.2_sbs.txt --noise 10,5 --exposures SBS1,100,40 --injection SBS88,0.05
-```
+## Project Layout
 
-## Functionality
-* combine_counts: for multiple count files, combine into a single tsv
-* combine_signatures: for multiple signature files, combine into a single tsv
-* compare_signatures: measures cosine similarity between input signatures
-* context_best_sig: find the signature with the highest proportion for each context
-* count_indels: counts indels in repeat regions using a an annotated bed file
-* count_maf: counts SNVs in context from a maf file
-* count: counts SNVs in context from a VCF file
-* decompose: calculate signature profile for a single sample
-* generate: build a new set of base signatures (incomplete)
-* plot_components: plot a signature profile
-* reduce_similarity: merge signature definitions with high cosine similarity to generate an "orthogonal" set of signatures
+- [`mutational_signature`](mutational_signature): package source and CLI modules
+- [`mutational_signature/data`](mutational_signature/data): bundled signature resources
+- [`example`](example): runnable sample data and walkthrough
+- [`tests`](tests): smoke tests and small fixtures
+- [`docs`](docs): contributor, CLI, and release notes
+
+## Documentation
+
+- [`docs/cli.md`](docs/cli.md)
+- [`docs/development.md`](docs/development.md)
+- [`docs/releasing.md`](docs/releasing.md)
+
+## Current Scope and Caveats
+
+- The codebase is CLI-first and still contains research-oriented utilities with uneven interface polish.
+- Some advanced commands assume domain familiarity or specific upstream file conventions.
+- Large bundled reference files should be updated carefully and with provenance notes.
+
+## License
+
+See [`LICENSE.md`](LICENSE.md).
