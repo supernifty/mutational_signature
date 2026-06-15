@@ -73,7 +73,7 @@ def update_chroms(required, chroms, genome, next_chrom):
   logging.info('reading chrom %s from genome. size is %i: done', next_chrom, len(chroms[next_chrom]))
   return None
 
-def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False, context_length=1, contexts_fh=None, contexts_of_interest=None, custom=None):
+def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, doublets=False, context_length=1, contexts_fh=None, contexts_of_interest=None, custom=None, no_normalize=False):
   if pos <= context_length or pos > len(chroms[chrom]) - context_length:
     logging.info('skipped edge variant at %s:%i', chrom, pos)
     return
@@ -183,7 +183,8 @@ def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, d
   if any([x not in 'ACGTacgt' for x in fragment]):
     return
   sbs_ctx = '{}>{}'.format(fragment, 'A') # G is dummy
-  sbs_ctx = normalize_sbs(sbs_ctx, context_length)[:(2 * context_length + 1)] # just the context
+  if not no_normalize:
+    sbs_ctx = normalize_sbs(sbs_ctx, context_length)[:(2 * context_length + 1)] # just the context
   counts[sbs_ctx] += 1
   if contexts_fh is not None and (contexts_of_interest is None or sbs_ctx in contexts_of_interest):
     contexts_fh.write('{}\t{}\t{}\t{}\n'.format(chrom, pos, chroms[chrom][pos], sbs_ctx))
@@ -237,7 +238,7 @@ def update_counts(counts, chrom, pos, chroms, indels=False, just_indels=False, d
 def count_bulk(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False, context_length=1, write_contexts=None, contexts_of_interest=None):
   pass
 
-def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False, context_length=1, write_contexts=None, contexts_of_interest=None, custom=None):
+def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=False, indels=False, context_length=1, write_contexts=None, contexts_of_interest=None, custom=None, no_normalize=False):
   logging.info('processing %s...', bed)
 
   if chroms is None:
@@ -318,10 +319,11 @@ if __name__ == '__main__':
   parser.add_argument('--context_length', required=False, default=1, type=int, help='how far to go from mutation in each direction') 
   parser.add_argument('--write_contexts', required=False, help='write chrom pos ref for matching')
   parser.add_argument('--contexts_of_interest', required=False, nargs='*', help='contexts of interest')
+  parser.add_argument('--no_normalize', action='store_true', help='do not normalize to pyrimidine mutation')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
-  count(genome_fh=open(args.genome, 'r'), bed=args.bed, out=sys.stdout, context_length=args.context_length, write_contexts=args.write_contexts, contexts_of_interest=args.contexts_of_interest, custom=args.custom)
+  count(genome_fh=open(args.genome, 'r'), bed=args.bed, out=sys.stdout, context_length=args.context_length, write_contexts=args.write_contexts, contexts_of_interest=args.contexts_of_interest, custom=args.custom, no_normalize=args.no_normalize)
