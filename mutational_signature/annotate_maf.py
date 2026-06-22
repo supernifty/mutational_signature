@@ -320,7 +320,7 @@ def maf_to_vcf(maf, chrom_col, pos_col, ref_col, alt_col, is_not_zipped, out):
     yield Variant(chrom, pos, ref, (alt,), row)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='mutational signature counter')
+  parser = argparse.ArgumentParser(description='Annotate MAF records with mutational signature contexts')
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--maf', required=True, help='maf file')
   parser.add_argument('--maf_chrom_column', required=False, default='Chromosome', help='maf chrom column name')
@@ -347,4 +347,3 @@ if __name__ == '__main__':
   logging.info('starting...')
   result = count(genome_fh=open(args.genome, 'r'), vcf_in=vcf_in, out=out, chroms=chroms, doublets=args.doublets, indels=args.indels, just_indels=args.just_indels, mer=args.mer)
   logging.info('done')
-

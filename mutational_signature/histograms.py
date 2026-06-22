@@ -94,7 +94,7 @@ def plot(ds, cols, target, dpi=300, width=None, height=None, percentiles=None):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Generate ?')
+  parser = argparse.ArgumentParser(description='Plot histograms of signature exposure values')
   parser.add_argument('--exposures', required=True, nargs='+', help='calculated exposures')
   parser.add_argument('--combined', action='store_true', help='input is a combined sig file')
   parser.add_argument('--cols', type=int, default=4, help='plots per row')

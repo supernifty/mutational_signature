@@ -46,7 +46,7 @@ def main(signatures, files):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Combine signatures')
+  parser = argparse.ArgumentParser(description='Combine decompose outputs into a sample-by-signature matrix')
   parser.add_argument('--signatures', required=True, help='signature definition')
   parser.add_argument('--files', required=True, nargs='+', help='output from decompose')
   parser.add_argument('--verbose', action='store_true', help='more logging')

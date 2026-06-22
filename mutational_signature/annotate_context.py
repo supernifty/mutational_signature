@@ -331,7 +331,7 @@ def maf_writer(out): # DictWriter
 
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='mutational signature counter')
+  parser = argparse.ArgumentParser(description='Annotate VCF or MAF variants with mutational signature context')
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--sequence', required=False, default=4, type=int, help='surrounding sequence in each direction to annotate, 0 to skip')
   parser.add_argument('--sequence_name', required=False, default='surrounding', help='surrounding sequence field name')

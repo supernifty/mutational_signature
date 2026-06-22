@@ -243,7 +243,7 @@ def main(conversion, delimiter=None):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Convert COSMIC signatures to our format')
+  parser = argparse.ArgumentParser(description='Convert external signature tables to this package format')
   parser.add_argument('--delimiter', help='input delimiter')
   parser.add_argument('--conversion', help='specify conversion type sbs db id sbstx sbs32 db32 sbs_signal')
   parser.add_argument('--verbose', action='store_true', help='more logging')

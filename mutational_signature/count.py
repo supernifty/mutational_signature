@@ -628,7 +628,7 @@ def maf_to_vcf(maf, sample, sample_col, chrom_col, pos_col, ref_col, alt_col, is
     yield Variant(chrom, pos, ref, (alt,), flter, info)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='mutational signature counter')
+  parser = argparse.ArgumentParser(description='Count mutational contexts from VCF or MAF input')
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--vcf', required=True, nargs='+', help='vcfs or mafs')
   parser.add_argument('--out', required=False, nargs='+', help='output files or stdout by default')

@@ -78,7 +78,7 @@ def main(signatures, minimum_error=0.01, just_sbs=True, out=sys.stdout):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Refine')
+  parser = argparse.ArgumentParser(description='Remove redundant signatures from a decomposition model')
   parser.add_argument('--signatures', required=True, help='signatures to decompose to')
   parser.add_argument('--minimum_error', required=False, type=float, default=0.01, help='minimum improvement in cosine similarity required')
   parser.add_argument('--verbose', action='store_true', help='more logging')

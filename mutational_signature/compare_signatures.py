@@ -121,7 +121,7 @@ def compare(signatures, signatures2, measure, out, no_convert):
     sys.stdout.write('{}\t{}\t{}\n'.format(name, '\t'.join(['{:.6f}'.format(x) for x in similarities[row]]), similar))
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='compare signatures')
+  parser = argparse.ArgumentParser(description='Compare signature definition matrices')
   parser.add_argument('--signatures', required=True, help='signatures')
   parser.add_argument('--signatures2', required=False, help='second group of signatures')
   parser.add_argument('--measure', required=False, default='cosine', help='cosine or pearson or pvalue')

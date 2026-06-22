@@ -70,7 +70,7 @@ def main(signatures, signature_sum=None):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Bootstrap reads counts file from stdin')
+  parser = argparse.ArgumentParser(description='Measure decomposition sensitivity to removing one context count')
   parser.add_argument('--signatures', required=True, help='signatures to decompose to')
   parser.add_argument('--signature_sum', required=False, nargs='+', help='Show the variation in a sum of signatures')
   parser.add_argument('--verbose', action='store_true', help='more logging')

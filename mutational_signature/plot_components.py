@@ -736,7 +736,7 @@ def plot(sigs, threshold, order, target, show_name, descriptions, description_th
   plt.close('all')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Plot signature breakdown')
+  parser = argparse.ArgumentParser(description='Plot stacked signature exposure components')
   parser.add_argument('--threshold', default=0.05, type=float, help='ignore sigs below this')
   parser.add_argument('--description_threshold', default=0.1, type=float, help='show description if above this value')
   parser.add_argument('--order', nargs='+', required=False, help='order of signatures')

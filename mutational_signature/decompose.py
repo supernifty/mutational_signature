@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+'''
+  fit observed context counts to a reference signature matrix
+'''
 
 import argparse
 import collections
@@ -326,7 +329,7 @@ def decompose(signatures_fh, counts_fh, out, metric='cosine', seed=None, evaluat
   return {'signature_names': all_names, 'signature_values': all_result, 'total': total, 'error': target_error, 'total_included': total_count}
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='mutational signature finder')
+  parser = argparse.ArgumentParser(description='Decompose context counts into reference signature exposures')
   parser.add_argument('--signatures', required=True, help='mutational signatures e.g. cosmic')
   parser.add_argument('--counts', required=True, help='counts file')
   parser.add_argument('--metric', required=False, default='cosine', help='metric: cosine, euclidean, kl or l1') # kl=kullback-leibler todo: add hellinger

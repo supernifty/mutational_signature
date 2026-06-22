@@ -59,7 +59,7 @@ def main(ifh, ofh, ranks, pie):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Assess MSI')
+  parser = argparse.ArgumentParser(description='Report the highest-contributing signatures for each context')
   parser.add_argument('--ranks', type=int, required=False, default=1, help='how many to show')
   parser.add_argument('--pie', required=False, help='template for pie file x.CTX.png')
   parser.add_argument('--verbose', action='store_true', help='more logging')
@@ -70,4 +70,3 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
   main(sys.stdin, sys.stdout, args.ranks, args.pie)
-

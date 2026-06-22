@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-  plots the 96 snv contexts given a count input
+  plot SBS or indel contexts from a count table
 '''
 
 import argparse
@@ -204,7 +204,7 @@ def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, fig
   plt.close()
  
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Plot contexts')
+  parser = argparse.ArgumentParser(description='Plot SBS or indel context counts from stdin')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   parser.add_argument('--normalize', action='store_true', help='normalize counts')
   parser.add_argument('--type', required=False, default='sbs', help='sbs or id')
@@ -224,4 +224,3 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
   plot(sys.stdin, args.target, args.type, args.name, args.dpi, args.title, args.normalize, args.fontsize, args.width, args.height, args.title_fontsize, args.ylim)
-

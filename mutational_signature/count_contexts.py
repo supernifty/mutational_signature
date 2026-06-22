@@ -2,8 +2,7 @@
 '''
   count opportunities for a particular context to occur
 
-  notes:
-  * for indels, variants must be left normalized
+  counts reference sequence context opportunity across genomic regions
 '''
 
 import argparse
@@ -310,7 +309,7 @@ def count(genome_fh, bed, out=None, chroms=None, just_indels=False, doublets=Fal
   return {'chroms': chroms, 'counts': counts, 'total': total_count}
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='mutational signature counter')
+  parser = argparse.ArgumentParser(description='Count reference context opportunities across BED regions')
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--bed', required=True, help='regions to consider')
   parser.add_argument('--indels', action='store_true', help='consider indels') # not supported

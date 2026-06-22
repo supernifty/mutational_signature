@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-  how similar are the input signatures?
+  compare two signature exposure outputs
 '''
 
 import argparse
@@ -88,7 +88,7 @@ def compare(x_exposures, y_exposures, out, plot, x_label, y_label, title, log, m
     matplotlib.pyplot.close('all')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='compare signatures')
+  parser = argparse.ArgumentParser(description='Compare two signature exposure files')
   parser.add_argument('--x_exposures', required=True, help='exposures filename')
   parser.add_argument('--y_exposures', required=True, help='second group of exposures filename')
   parser.add_argument('--x_label', required=True, help='exposures colname for output')
@@ -104,4 +104,3 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
   compare(args.x_exposures, args.y_exposures, sys.stdout, args.plot, args.x_label, args.y_label, args.title, args.log, args.measure)
-

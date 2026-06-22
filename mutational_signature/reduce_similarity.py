@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-  predict lynch pathway
+  merge highly similar signatures until all pairs are below a threshold
 '''
 
 import argparse
@@ -75,7 +75,7 @@ def main(ifh, ofh, max_similarity, merge_strategy):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Assess MSI')
+  parser = argparse.ArgumentParser(description='Merge highly similar signatures in a signature matrix')
   parser.add_argument('--max_similarity', type=float, default=0.8, required=False, help='max allowed similarity in final set')
   parser.add_argument('--merge_strategy', required=False, default='average', help='how to merge. average or first')
   parser.add_argument('--verbose', action='store_true', help='more logging')

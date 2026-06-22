@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-  given tumour and normal vcf pairs, explore msi status
+  approximate each signature as a non-negative mixture of other signatures
 '''
 
 import argparse
@@ -71,7 +71,7 @@ def main(signatures, signatures2, components=5):
     #sys.stdout.write('{} Formula\t{}\n'.format(s, ' + '.join(['{:.3f} * {}'.format(f[0], f[1]) for f in sorted(formula, key=lambda x: -x[0])])))
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Find linearly dependent combinations')
+  parser = argparse.ArgumentParser(description='Approximate each signature as a mixture of other signatures')
   parser.add_argument('--signatures', required=True, help='signature definitions')
   parser.add_argument('--signatures2', required=False, help='if specified, use these only as possible dependends')
   parser.add_argument('--components', required=False, type=int, default=5, help='how many components to use')

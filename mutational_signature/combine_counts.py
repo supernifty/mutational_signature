@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-  combine signature outputs
+  combine context count files into a sample-by-context matrix
 '''
 
 import argparse
@@ -38,7 +38,7 @@ def main(files, use_probability):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Combine signatures')
+  parser = argparse.ArgumentParser(description='Combine context count files into one matrix')
   parser.add_argument('--files', required=True, nargs='+', help='count files')
   parser.add_argument('--use_probability', action='store_true', help='probability instead of count')
   parser.add_argument('--verbose', action='store_true', help='more logging')

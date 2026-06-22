@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+'''
+  count indel lengths by repeat annotation from a MAF file
+'''
 
 import argparse
 import csv
@@ -117,7 +120,7 @@ def main(maf, sample, bed, comp, rot, out_fh, maxlen, tree=None):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='mutational signature counter')
+  parser = argparse.ArgumentParser(description='Count indel repeat contexts from a MAF file')
   parser.add_argument('--annotation', required=True, help='bed')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   parser.add_argument('--complement', action='store_true', help='ignore direction')

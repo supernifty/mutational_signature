@@ -72,4 +72,4 @@ def test_count_decompose_and_plot_smoke(tmp_path):
 def test_console_script_help_smoke():
   help_cmd = [sys.executable, "-m", "mutational_signature.decompose", "--help"]
   result = run_command(help_cmd)
-  assert "mutational signature finder" in result.stdout.lower()
+  assert "decompose context counts into reference signature exposures" in result.stdout.lower()

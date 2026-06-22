@@ -80,7 +80,7 @@ def main(vcfs, sequence, lengths, normalize, snvs, proportions, smooth):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Assess MSI')
+  parser = argparse.ArgumentParser(description='Summarize surrounding sequence contexts from annotated VCFs')
   parser.add_argument('--vcfs', nargs='+', required=True, help='vcfs to summarise')
   parser.add_argument('--sequence', required=True, type=int, help='sequence length provided')
   parser.add_argument('--lengths', required=True, nargs='+', type=int, help='sequence requested')

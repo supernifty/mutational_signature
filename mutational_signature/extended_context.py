@@ -342,7 +342,7 @@ def maf_to_vcf(maf, sample, sample_col, chrom_col, pos_col, ref_col, alt_col, is
 
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='mutational signature counter')
+  parser = argparse.ArgumentParser(description='Evaluate custom extended sequence-context rules for variants')
   parser.add_argument('--genome', required=True, help='reference genome')
   parser.add_argument('--transcripts', required=False, help='transcript from ucsc')
   parser.add_argument('--vcf', required=True, help='vcf or maf')

@@ -69,7 +69,7 @@ def compare(exposures, signatures, measure, out):
     odw.writerow({'Sig': r['Sig'], 'cosine_similarity': similarity})
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='compare signatures')
+  parser = argparse.ArgumentParser(description='Compare observed context counts to reference signatures')
   parser.add_argument('--exposures', required=True, help='exposures')
   parser.add_argument('--signatures', required=True, help='second group of exposures')
   parser.add_argument('--measure', required=False, default='cosine', help='cosine or pearson')
@@ -80,4 +80,3 @@ if __name__ == '__main__':
   else:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
   compare(args.exposures, args.signatures, args.measure, sys.stdout)
-

@@ -107,7 +107,7 @@ def main(n, output_template, defs, exposures, injections, noise, answers, mutati
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='generate context counts')
+  parser = argparse.ArgumentParser(description='Simulate mutational context count files from signature mixtures')
   parser.add_argument('--n', type=int, default=10, help='number of simulations')
   parser.add_argument('--output_template', default='counts.NUM', help='output filenames NUM becomes simulation number')
   parser.add_argument('--sigdefs', required=True, help='signature definitions')

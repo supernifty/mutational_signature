@@ -136,7 +136,7 @@ def main(signatures, bootstraps, confidence, just_sbs=True, all_contexts_possibl
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Bootstrap reads counts file from stdin')
+  parser = argparse.ArgumentParser(description='Bootstrap mutational signature decomposition from counts on stdin')
   parser.add_argument('--signatures', required=True, help='signatures to decompose to')
   parser.add_argument('--count', required=False, default=10, type=int, help='how many times to run the bootstrap')
   parser.add_argument('--confidence', required=False, nargs='+', default=[0.05, 0.5, 0.95], help='what confidence intervals to include in output')

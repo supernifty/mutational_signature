@@ -32,7 +32,7 @@ def main(fh, out):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Find context')
+  parser = argparse.ArgumentParser(description='Report the highest-probability context for each signature')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:

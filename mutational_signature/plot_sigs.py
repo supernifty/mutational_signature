@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-  given signatures, plot the 96 contexts - one file for each signature
+  plot one context profile per signature
 '''
 
 import argparse
@@ -32,7 +32,7 @@ def main(prefix, category, sig_col, fontsize, title_fontsize, dpi, suffix, ylim,
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Plot signature contexts')
+  parser = argparse.ArgumentParser(description='Plot one context profile per signature')
   parser.add_argument('--prefix', required=False, default='', help='prefix output files')
   parser.add_argument('--suffix', required=False, default='png', help='image type')
   parser.add_argument('--category', required=False, default='sbs', help='sbs or ids')

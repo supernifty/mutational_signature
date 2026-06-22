@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-  adjust exposures based on given frequencies
+  adjust context counts based on source and target opportunity tables
 '''
 
 import argparse
@@ -43,7 +43,7 @@ def main(input, output, adjust_from_fh, adjust_to_fh, entire_variation):
   logging.info('done. updated %i', updated)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Adjust exposures by generating new counts file from stdin with each context adjusted by adjust_to/adjust_from')
+  parser = argparse.ArgumentParser(description='Adjust context counts from stdin using source and target opportunity tables')
   parser.add_argument('--adjust_from', required=True, help='context of source of variants: tsv with Variation/Count')
   parser.add_argument('--adjust_to', required=True, help='context of signatures: tsv with Variation/Count')
   parser.add_argument('--entire_variation', action='store_true', help='match entire variation not just genomic context')

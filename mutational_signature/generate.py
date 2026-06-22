@@ -292,7 +292,7 @@ def generate(counts, components, use_proportion, stats, min_mutation_proportion,
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Find mutational signatures')
+  parser = argparse.ArgumentParser(description='Generate de novo mutational signatures from count files')
   parser.add_argument('--counts', required=True, nargs='+', help='context counts for each sample')
   parser.add_argument('--components', required=True, nargs='+', type=int, help='number of decomposition components')
   parser.add_argument('--use_proportion', action='store_true', help='use variation proportion instead of count')

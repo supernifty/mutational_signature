@@ -43,7 +43,7 @@ def main(ifh, ofh):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Likelihood by context')
+  parser = argparse.ArgumentParser(description='Summarize signature likelihoods for each context')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   args = parser.parse_args()
   if args.verbose:
@@ -52,5 +52,4 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO)
 
   main(sys.stdin, sys.stdout)
-
 

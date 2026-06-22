@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+'''
+  run signature decomposition across multiple count files
+'''
 
 import argparse
 import collections
@@ -41,7 +44,7 @@ def decompose_bulk(out, signatures_fh, counts, metric, seed, evaluate, solver, m
     o.writerow(r)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='mutational signature finder')
+  parser = argparse.ArgumentParser(description='Decompose multiple count files into reference signature exposures')
   parser.add_argument('--signatures', required=True, help='mutational signatures e.g. cosmic')
   parser.add_argument('--counts', required=True, nargs='+', help='counts files')
   parser.add_argument('--metric', required=False, default='cosine', help='metric. cosine, euclidean, or l1') # todo: add hellinger

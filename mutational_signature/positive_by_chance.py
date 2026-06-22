@@ -85,7 +85,7 @@ def main(signatures, signature_sum=None, variant_count=10, threshold=0.5, bootst
   logging.info('done. %i of %i passed (%.2f)', passed, bootstrap_count, passed / bootstrap_count * 100)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Bootstrap reads counts file from stdin')
+  parser = argparse.ArgumentParser(description='Estimate signature positivity from random context samples')
   parser.add_argument('--signatures', required=True, help='signatures to decompose to')
   parser.add_argument('--signature_sum', required=False, nargs='+', help='Show the variation in a sum of signatures')
   parser.add_argument('--threshold', required=False, default=0.5, type=float, help='threshold of interest')

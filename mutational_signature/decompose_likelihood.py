@@ -112,7 +112,7 @@ def decompose(sigs_fh, counts_fh, ofh, seed, counts_column):
   return posterior
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='mutational signature finder')
+  parser = argparse.ArgumentParser(description='Score signatures by log likelihood for observed counts')
   parser.add_argument('--signatures', required=True, help='mutational signatures e.g. cosmic')
   parser.add_argument('--counts', required=True, help='counts file')
   parser.add_argument('--seed', required=False, type=int, help='random number seed for reproducibility')

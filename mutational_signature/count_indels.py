@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+'''
+  count indel lengths by repeat annotation from VCF on stdin
+'''
 
 import argparse
 import collections
@@ -90,7 +93,7 @@ def main(bed, comp, rot, maxlen):
   logging.info('done')
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='mutational signature counter')
+  parser = argparse.ArgumentParser(description='Count indel repeat contexts from VCF on stdin')
   parser.add_argument('--annotation', required=True, help='bed')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   parser.add_argument('--complement', action='store_true', help='ignore direction')

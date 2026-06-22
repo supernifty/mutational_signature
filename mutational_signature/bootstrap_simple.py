@@ -96,7 +96,7 @@ def main(ofh, definition, count_files, replicates, downsample_style, downsample_
         odw.writerow(median_row)
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Bootstrap reads counts file from stdin')
+  parser = argparse.ArgumentParser(description='Downsample count files and compare decomposition stability')
   parser.add_argument('--definition', required=True, help='signatures to decompose to')
   parser.add_argument('--replicates', required=False, default=10, type=int, help='how many times to run the bootstrap')
   parser.add_argument('--count_files', required=True, nargs='+', help='how many times to run the bootstrap')
