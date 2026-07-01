@@ -82,6 +82,13 @@ uv run decompose \
 uv run plot-counts --target sample.sbs.png < sample.count
 ```
 
+Use `--type dbs` for COSMIC DBS78 doublet contexts or `--type id` for indel
+contexts:
+
+```bash
+uv run plot-counts --type dbs --target sample.dbs.png < sample.count
+```
+
 ### Plot signature exposures across multiple samples
 
 ```bash

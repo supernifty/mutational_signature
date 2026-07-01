@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-  plot SBS or indel contexts from a count table
+  plot SBS, DBS, or indel contexts from a count table
 '''
 
 import argparse
@@ -19,6 +19,19 @@ WIDTH=18
 HEIGHT=6
 
 rcParams['figure.figsize'] = WIDTH, HEIGHT
+
+DBS_CONTEXTS = (
+  'AC>CA', 'AC>CG', 'AC>CT', 'AC>GA', 'AC>GG', 'AC>GT', 'AC>TA', 'AC>TG', 'AC>TT',
+  'AT>CA', 'AT>CC', 'AT>CG', 'AT>GA', 'AT>GC', 'AT>TA',
+  'CC>AA', 'CC>AG', 'CC>AT', 'CC>GA', 'CC>GG', 'CC>GT', 'CC>TA', 'CC>TG', 'CC>TT',
+  'CG>AT', 'CG>GC', 'CG>GT', 'CG>TA', 'CG>TC', 'CG>TT',
+  'CT>AA', 'CT>AC', 'CT>AG', 'CT>GA', 'CT>GC', 'CT>GG', 'CT>TA', 'CT>TC', 'CT>TG',
+  'GC>AA', 'GC>AG', 'GC>AT', 'GC>CA', 'GC>CG', 'GC>TA',
+  'TA>AT', 'TA>CG', 'TA>CT', 'TA>GC', 'TA>GG', 'TA>GT',
+  'TC>AA', 'TC>AG', 'TC>AT', 'TC>CA', 'TC>CG', 'TC>CT', 'TC>GA', 'TC>GG', 'TC>GT',
+  'TG>AA', 'TG>AC', 'TG>AT', 'TG>CA', 'TG>CC', 'TG>CT', 'TG>GA', 'TG>GC', 'TG>GT',
+  'TT>AA', 'TT>AC', 'TT>AG', 'TT>CA', 'TT>CC', 'TT>CG', 'TT>GA', 'TT>GC', 'TT>GG',
+)
 
 def plot(counts, target, style='sbs', name=None, dpi=72, title=None, normalize=False, fontsize=8, width=10, height=4, title_fontsize=10, ylim=None):
   logging.info('reading from stdin...')
@@ -64,8 +77,10 @@ def plot(counts, target, style='sbs', name=None, dpi=72, title=None, normalize=F
     plot_signature(vals, target, name=name, dpi=dpi, title=title, fontsize=fontsize, figure_width=width, figure_height=height, title_fontsize=title_fontsize, ylim=ylim)
   elif style == 'id':
     plot_signature_ids(vals, target, name=name, dpi=dpi, title=title, fontsize=fontsize, figure_width=width, figure_height=height, title_fontsize=title_fontsize, ylim=ylim)
+  elif style == 'dbs':
+    plot_signature_dbs(vals, target, name=name, dpi=dpi, title=title, fontsize=fontsize, figure_width=width, figure_height=height, title_fontsize=title_fontsize, ylim=ylim)
   else:
-    logging.warn('unrecognised plot type %s', style)
+    logging.warning('unrecognised plot type %s', style)
 
 def plot_signature(vals, target, name=None, fontsize=14, figure_width=10, figure_height=4, dpi=72, title=None, title_fontsize=14, ylim=None):
   logging.debug('plotting with size %i x %i', figure_width, figure_height)
@@ -104,6 +119,58 @@ def plot_signature(vals, target, name=None, fontsize=14, figure_width=10, figure
   ax.set_ylabel('Mutation probability (%)', fontsize=fontsize)
   ax.set_xlabel('Mutational Context', fontsize=fontsize)
 
+  if title is not None:
+    ax.set_title(title, fontsize=title_fontsize)
+
+  plt.savefig(target, bbox_inches='tight', dpi=dpi)
+  plt.close()
+
+def plot_signature_dbs(vals, target, name=None, fontsize=14, figure_width=10, figure_height=4, dpi=72, title=None, title_fontsize=14, ylim=None):
+  xs = DBS_CONTEXTS
+  ys = [100 * vals.get(context, 0) for context in xs]
+
+  groups = (
+    ('AC', 9, '#03BDEF'), ('AT', 6, '#0366CC'), ('CC', 9, '#A2CF63'),
+    ('CG', 6, '#016601'), ('CT', 9, '#FF9999'), ('GC', 6, '#E42926'),
+    ('TA', 6, '#FFB266'), ('TC', 9, '#FF8001'), ('TG', 9, '#CC99FF'),
+    ('TT', 9, '#4C0199'),
+  )
+  colors = [color for _, size, color in groups for _ in range(size)]
+
+  if ylim is None:
+    ylim = max(ys)
+  width = len(xs)
+  x = range(width)
+  fig, ax = plt.subplots(1, figsize=(figure_width, figure_height))
+  bars = ax.bar(x, ys)
+  for bar, color in zip(bars, colors):
+    bar.set_color(color)
+
+  ax.set_xticks(x)
+  ax.set_xticklabels(xs, minor=False, rotation=90, fontsize=fontsize)
+  ax.tick_params(axis='y', which='major', labelsize=fontsize)
+  ax.set_ylim(0, ylim)
+  ax.set_xlim(-0.5, width - 0.5)
+  ax.set_ylabel('Mutation probability (%)', fontsize=fontsize)
+  ax.set_xlabel('Mutational Context', fontsize=fontsize)
+
+  ax2 = ax.twiny()
+  ax2.set_xlim(ax.get_xlim())
+  starts = []
+  offset = 0
+  for label, size, _ in groups:
+    starts.append((label, offset, size))
+    offset += size
+  ax2.set_xticks([start + (size - 1) / 2 for _, start, size in starts])
+  ax2.set_xticklabels([label for label, _, _ in starts], fontsize=title_fontsize)
+
+  offset = 0
+  for _, size, _ in groups[:-1]:
+    offset += size
+    ax.axvline(x=offset - 0.5, color='#e0e0e0')
+
+  if name is not None:
+    plt.annotate(name, xy=(0.01, 1-title_fontsize * 0.01), xycoords='axes fraction', fontsize=title_fontsize)
   if title is not None:
     ax.set_title(title, fontsize=title_fontsize)
 
@@ -204,10 +271,10 @@ def plot_signature_ids(vals, target, name=None, fontsize=14, figure_width=6, fig
   plt.close()
  
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Plot SBS or indel context counts from stdin')
+  parser = argparse.ArgumentParser(description='Plot SBS, DBS, or indel context counts from stdin')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   parser.add_argument('--normalize', action='store_true', help='normalize counts')
-  parser.add_argument('--type', required=False, default='sbs', help='sbs or id')
+  parser.add_argument('--type', required=False, default='sbs', choices=('sbs', 'dbs', 'id'), help='sbs, dbs, or id')
   parser.add_argument('--name', required=False, help='name of plot')
   parser.add_argument('--title', required=False, help='name of plot')
   parser.add_argument('--target', required=False, default='plot.png', help='output filename')

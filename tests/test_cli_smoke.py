@@ -73,3 +73,22 @@ def test_console_script_help_smoke():
   help_cmd = [sys.executable, "-m", "mutational_signature.decompose", "--help"]
   result = run_command(help_cmd)
   assert "decompose context counts into reference signature exposures" in result.stdout.lower()
+
+
+def test_plot_dbs_smoke(tmp_path):
+  plot_file = tmp_path / "mini.dbs.png"
+  plot_input = "Variation\tCount\tProbability\nAC>CA\t2\t0.25\nTT>GG\t6\t0.75\n"
+  plot_cmd = [
+    sys.executable,
+    "-m",
+    "mutational_signature.plot_counts",
+    "--type",
+    "dbs",
+    "--target",
+    str(plot_file),
+  ]
+  result = run_command(plot_cmd, stdin_text=plot_input)
+  assert "78 contexts" not in result.stderr
+  assert "2 contexts" in result.stderr
+  assert plot_file.exists()
+  assert plot_file.stat().st_size > 0
