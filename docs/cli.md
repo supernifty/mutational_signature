@@ -28,15 +28,64 @@ uv run plot-counts --target sample.png < sample.count
 | `decompose` | `decompose.py` | Fit a count table from `--counts` to reference signatures from `--signatures`. Supports `--metric` (`cosine`, `euclidean`, `kl`, `l1`), `--solver` (`basin`, `grid`), `--max_sigs`, context cutoffs, strand signatures, and `--count_column`. Writes one signature/value row per exposure plus error and mutation total rows. |
 | `decompose-bulk` | `decompose_bulk.py` | Run `decompose` over multiple `--counts` files and combine the results into one TSV with one row per file. Uses the same decomposition options as `decompose`. |
 | `decompose-likelihood` | `decompose_likelihood.py` | Score each signature independently by log likelihood for a count table, then convert scores to posterior probabilities under a uniform prior. Useful for low-count comparisons where mixture fitting is not desired. |
-| `bootstrap` | `bootstrap.py` | Read a count table from stdin, repeatedly resample contexts, decompose each bootstrap sample, and report confidence intervals for error, count, and signature proportions. Optional `--plot` requires the `plotme` extra. |
-| `bootstrap-simple` | `bootstrap_simple.py` | Downsample one or more count files by percentage or fixed mutation count, decompose each replicate, and report similarity to the full-data estimate. Supports median aggregation with `--aggregate median`. |
+| `signature-stability` | `signature_stability.py` | Recommended command for exposure uncertainty. Reads one count table from `--counts` or stdin, requires `--sample`, perturbs the catalogue with Dirichlet-multinomial by default, reruns direct or refined fitting from the full supplied signature matrix for every replicate, and writes per-signature bootstrap stability summaries plus optional replicate-level rows. |
+| `combine-signature-stability` | `combine_signature_stability.py` | Combine multiple `signature-stability` summary TSVs into a cohort-level table. Defaults to one row per sample/signature with point exposure proportion, bootstrap interval, detection frequency, count companions, run metadata, and source filename. Supports `--wide`, `--all-columns`, `--include`, and `--exclude`. |
+| `bootstrap` | `bootstrap.py` | Deprecated experimental bootstrap command retained for compatibility. Prefer `signature-stability`, which avoids pseudocount/error injection, reruns fitting from the full reference set, and reports tidy per-signature summaries. Optional `--plot` requires the `plotme` extra. |
+| `bootstrap-simple` | `bootstrap_simple.py` | Deprecated experimental downsampling command retained for compatibility. Prefer `signature-stability --perturbation downsample` for rigorous single-sample stability output. |
 | `generate-signatures` | `generate.py` | Derive de novo signatures from multiple count files using NMF for each requested `--components` value. Can write component stats, compare generated signatures to a reference file, perform bootstraps, and save generated signatures. |
 | `refine-signatures` | `refine_signatures.py` | Read counts from stdin, decompose against `--signatures`, and iteratively remove signatures whose removal does not increase reconstruction error beyond `--minimum_error`. Writes the final decomposition result. |
 | `reduce-similarity` | `reduce_similarity.py` | Read a signature matrix from stdin and repeatedly merge the most similar pair until all pairwise cosine similarities are at or below `--max_similarity`. `--merge_strategy first` keeps the first signature; the default averages merged signatures. |
 | `linear-dependence` | `linear_dependence.py` | Approximate each signature in `--signatures` as a non-negative weighted mixture of other signatures and report the cosine-error residual plus the largest component weights. With `--signatures2`, only signatures in that second file are used as candidate components. This is an approximation/similarity diagnostic, not a formal proof of exact linear dependence. |
-| `stability` | `stability.py` | Read counts from stdin, compute a point decomposition, then remove one mutation from each observed context in turn and report how much each signature estimate changes. |
+| `stability` | `stability.py` | Deprecated experimental leave-one-context sensitivity command. Prefer `signature-stability` for bootstrap stability intervals around exposure proportions and mutation counts. |
 | `positive-by-chance` | `positive_by_chance.py` | Read counts from stdin, sample random subsets of `--variant_count` variants according to the observed context distribution, decompose each sample, and report how often a chosen `--signature_sum` exceeds `--threshold`. |
 | `simulate-signatures` | `simulate.py` | Generate synthetic count files from signature definitions. Background exposures are `signature,mean,sd`; injected signals are `signature,proportion`. `NUM` in `--output_template` is replaced by the simulation index. |
+
+### Signature stability interpretation
+
+Use `signature-stability` when the primary question is uncertainty around fitted
+signature exposure proportions. Example:
+
+```bash
+uv run signature-stability \
+  --signatures mutational_signature/data/signatures_cosmic_v3_sbs.txt \
+  --counts sample.count \
+  --sample SAMPLE1 \
+  --seed 123 \
+  --replicates 1000 \
+  --replicates-output sample.signature_stability.replicates.tsv \
+  > sample.signature_stability.summary.tsv
+```
+
+The summary contains one row per signature. The key columns for exposure
+uncertainty are `point_exposure_proportion`,
+`bootstrap_percentile_2_5_proportion`,
+`bootstrap_percentile_97_5_proportion`, and `detection_frequency`; companion
+mutation-count columns are also written. These are bootstrap stability intervals
+conditional on the observed count table, supplied reference signatures, fitting
+mode, and perturbation model. They are not intervals for all biological or
+experimental uncertainty, and a narrow interval does not protect against an
+incomplete or inappropriate signature reference set.
+
+The default perturbation is `dirichlet-multinomial` with `--alpha 0.1`, which
+allows additional catalogue uncertainty beyond a plain multinomial draw.
+`multinomial` resamples the observed context proportions at the original total
+mutation count. `downsample` samples observed mutations without replacement
+using exactly one of `--fraction` or `--mutation-count`.
+
+Every replicate starts from the full supplied signature matrix. This is required
+so the intervals reflect instability from signature selection and substitution;
+replicates are not restricted to signatures selected in the point estimate.
+
+Combine per-sample summary files with:
+
+```bash
+uv run combine-signature-stability \
+  --files results/*.signature_stability.summary.tsv \
+  > cohort.signature_stability.tsv
+```
+
+The default combined output remains long/tidy. Use `--wide` only when a
+downstream tool requires one row per sample with `Signature_metric` columns.
 
 ## Compare and Summarize Results
 
@@ -62,6 +111,7 @@ uv run plot-counts --target sample.png < sample.count
 | `plot-sigs` | `plot_sigs.py` | Read a signature matrix from stdin and generate one context plot per signature. `--category sbs` plots SBS signatures; `--category ids` plots indel signatures. Output filenames are `--prefix` + signature name + `--suffix`. |
 | `plot-components` | `plot_components.py` | Read a combined exposure matrix from stdin and draw stacked signature-exposure bars. Supports ordering, custom colors, thresholds, labels, vertical layout, indicator strips, separator lines, and renormalization with an `Other` component. |
 | `histograms` | `histograms.py` | Plot histograms of signature proportions across exposure files. Reads separate decompose outputs by default or a combined sample-by-signature matrix with `--combined`. |
+| `plot-signature-stability` | `plot_signature_stability.py` | Plot a combined long `signature-stability` summary as one bar plot per signature. Samples are ordered by point exposure, error bars show bootstrap percentile proportion bounds, and bar colour indicates detection frequency categories: `<50%`, `50-75%`, `75-95%`, `95-99%`, and `>99%`. |
 
 ## Variant-Level Signature Assignment
 

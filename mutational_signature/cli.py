@@ -41,6 +41,10 @@ def combine_signatures():
   _run("mutational_signature.combine_signatures")
 
 
+def combine_signature_stability():
+  _run("mutational_signature.combine_signature_stability")
+
+
 def compare_exposures():
   _run("mutational_signature.compare_exposures")
 
@@ -125,6 +129,10 @@ def plot_sigs():
   _run("mutational_signature.plot_sigs")
 
 
+def plot_signature_stability():
+  _run("mutational_signature.plot_signature_stability")
+
+
 def positive_by_chance():
   _run("mutational_signature.positive_by_chance")
 
@@ -143,6 +151,10 @@ def refine_signatures():
 
 def simulate():
   _run("mutational_signature.simulate")
+
+
+def signature_stability():
+  _run("mutational_signature.signature_stability")
 
 
 def stability():

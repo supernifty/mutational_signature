@@ -8,9 +8,10 @@ The repository now supports a modern `uv` workflow for development while remaini
 
 - `count`: derive SBS, DBS, or indel context counts from VCF or MAF input
 - `decompose`: fit a sample's counts against a reference signature matrix
+- `signature-stability`: estimate bootstrap stability intervals for fitted signature exposures
 - `plot-counts`: render SBS or indel context plots
 - `plot-components`: render signature exposure panels across samples
-- utility commands for bootstrap analysis, similarity checks, context annotation, and signature conversion
+- utility commands for similarity checks, context annotation, and signature conversion
 
 Reference signature files are bundled under [`mutational_signature/data`](mutational_signature/data).
 
@@ -75,6 +76,59 @@ uv run decompose \
   --signatures mutational_signature/data/signatures_cosmic_v3_sbs.txt \
   --counts sample.count > sample.exposures
 ```
+
+### Estimate exposure stability intervals
+
+`signature-stability` is the recommended command for uncertainty around fitted
+signature exposures. It perturbs the observed catalogue, reruns fitting from the
+full supplied signature matrix for every replicate, and reports bootstrap
+stability intervals for both exposure proportions and assigned mutation counts.
+The default perturbation is Dirichlet-multinomial with `--alpha 0.1`.
+
+```bash
+uv run signature-stability \
+  --signatures mutational_signature/data/signatures_cosmic_v3_sbs.txt \
+  --counts sample.count \
+  --sample SAMPLE1 \
+  --seed 123 \
+  --replicates 1000 \
+  --replicates-output sample.signature_stability.replicates.tsv \
+  > sample.signature_stability.summary.tsv
+```
+
+The interval columns, for example
+`bootstrap_percentile_2_5_proportion` and
+`bootstrap_percentile_97_5_proportion`, describe bootstrap stability conditional
+on the observed catalogue, supplied reference signatures, fitting mode, and
+perturbation model. They do not capture all biological or experimental
+uncertainty. A narrow interval also does not protect against an incomplete or
+inappropriate reference signature set.
+
+Each replicate starts from the full reference matrix rather than the signatures
+selected in the point estimate. This is intentional: it captures instability
+from signature substitution and selection, not only uncertainty in fixed
+point-estimate weights.
+
+Combine per-sample summaries into a cohort-level table with the point exposure,
+bootstrap interval, detection frequency, and run metadata:
+
+```bash
+uv run combine-signature-stability \
+  --files results/*.signature_stability.summary.tsv \
+  > cohort.signature_stability.tsv
+```
+
+Plot point exposures and bootstrap intervals across samples, one PNG per
+signature:
+
+```bash
+uv run plot-signature-stability \
+  --input cohort.signature_stability.tsv \
+  --output-dir results/signature_stability_plots
+```
+
+Bars are ordered by point exposure within each signature. Bar colour indicates
+detection frequency: `<50%`, `50-75%`, `75-95%`, `95-99%`, or `>99%`.
 
 ### Plot SBS context counts
 

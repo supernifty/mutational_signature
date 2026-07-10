@@ -15,6 +15,88 @@ import numpy as np
 import scipy.optimize
 import scipy.special
 
+def normalise_signature_context(context, strand=False):
+  if '>' in context or (strand and len(context) != 5 or not strand and len(context) != 4):
+    return context
+  if strand:
+    return '{}{}{}>{}{}'.format(context[0], context[1], context[3], context[2], context[4])
+  return '{}{}{}>{}'.format(context[0], context[1], context[3], context[2])
+
+def read_signature_matrix(signatures_fh, strand=False):
+  names = []
+  rows = []
+  first = True
+  signature_classes = []
+  for line in signatures_fh:
+    if line.startswith('#') or line.strip() == '':
+      continue
+    fields = line.strip('\n\r').split('\t')
+    if first:
+      first = False
+      signature_classes = [normalise_signature_context(f, strand) for f in fields[1:]]
+      logging.debug('%i signature classes: %s...', len(signature_classes), signature_classes[:3])
+      continue
+    names.append(fields[0])
+    rows.append([float(x) for x in fields[1:]])
+
+  if first:
+    raise ValueError('no signature definitions found')
+
+  return {
+    'signature_names': np.array(names),
+    'contexts': signature_classes,
+    'matrix': np.transpose(np.array(rows, dtype=float)),
+  }
+
+def read_counts_vector(counts_fh, signature_classes, strand=False, counts_column='Count', strict=False):
+  b = [0] * len(signature_classes)
+  header = None
+  total_count = 0
+  seen_contexts = set()
+  signature_index = {c: i for i, c in enumerate(signature_classes)}
+
+  for line in counts_fh:
+    if line.startswith('#') or line.strip() == '':
+      continue
+    if header is None:
+      header = line.strip('\n').split('\t')
+      if counts_column not in header:
+        raise ValueError('counts column {} not found'.format(counts_column))
+      continue
+    fields = line.strip('\n').split('\t')
+    if strand and len(fields) > 4:
+      for signature, value in (('{}T'.format(fields[0]), fields[3]), ('{}U'.format(fields[0]), fields[4])):
+        value = float(value)
+        if signature not in signature_index:
+          if strict and value != 0:
+            raise ValueError('count context {} not in signature definitions'.format(signature))
+          logging.debug('context %s not in signature definitions', signature)
+          continue
+        b[signature_index[signature]] = value
+        total_count += value
+        seen_contexts.add(signature)
+    else:
+      context = fields[0]
+      value = float(fields[header.index(counts_column)])
+      if context not in signature_index:
+        if strict and value != 0:
+          raise ValueError('count context {} not in signature definitions'.format(context))
+        logging.debug('context %s not in signature definitions', context)
+        continue
+      b[signature_index[context]] = value
+      total_count += value
+      seen_contexts.add(context)
+
+  if header is None:
+    raise ValueError('no count table header found')
+
+  return {
+    'contexts': signature_classes,
+    'counts': np.array(b, dtype=float),
+    'total_count': total_count,
+    'seen_contexts': seen_contexts,
+  }
+
 def make_distance(A, b, metric, with_composition=False):
   '''
     assess the current candidate - how close is Ax to b?
@@ -147,6 +229,49 @@ def basin_hopping_solver(A, b, metric, max_sigs):
   result = scipy.optimize.basinhopping(make_distance(A, b, metric), x0, minimizer_kwargs=minimizer_kwargs, stepsize=5, T=5).x
 
   return result
+
+def deterministic_solver(A, b, metric, max_sigs=None, rng=None):
+  if max_sigs is not None:
+    logging.warning('Ignoring max_sigs parameter')
+
+  x0 = np.ones(A.shape[1], dtype=float)
+  bounds = [(0.0, np.inf)] * A.shape[1]
+  result = scipy.optimize.minimize(make_distance(A, b, metric), x0, method='L-BFGS-B', bounds=bounds)
+  if not result.success:
+    logging.warning('decomposition solver status: %s', result.message)
+  return result.x
+
+def fit_signature_matrix(A, b, names, metric='cosine', solver='basin', max_sigs=None):
+  if sum(b) == 0:
+    result = np.array([1.0 / len(names)] * len(names))
+  else:
+    if solver == 'basin':
+      result = deterministic_solver(A, b, metric, max_sigs)
+    elif solver == 'grid':
+      result = grid_search(A, b, metric, max_sigs)
+    else:
+      raise ValueError('Unknown solver {}'.format(solver))
+
+  total = sum(result)
+  if total == 0:
+    proportions = np.array([0.0] * len(result))
+  else:
+    proportions = np.array(result) / total
+
+  if sum(b) == 0:
+    error = (0.0, None)
+  else:
+    error = make_distance(A, b, metric, with_composition=True)(result)
+  total_error = 1.0 + error[0] if metric == 'cosine' else error[0]
+
+  return {
+    'signature_names': np.array(names),
+    'signature_values': np.array(result),
+    'signature_proportions': proportions,
+    'total': total,
+    'error': (total_error, error[1]),
+    'status': 'ok',
+  }
 
 
 def decompose(signatures_fh, counts_fh, out, metric='cosine', seed=None, evaluate=None, solver='basin', max_sigs=None, context_cutoff=1e6, error_contribution=False, strand=False, counts_column='Count'):
