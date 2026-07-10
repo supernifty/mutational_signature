@@ -111,7 +111,7 @@ downstream tool requires one row per sample with `Signature_metric` columns.
 | `plot-sigs` | `plot_sigs.py` | Read a signature matrix from stdin and generate one context plot per signature. `--category sbs` plots SBS signatures; `--category ids` plots indel signatures. Output filenames are `--prefix` + signature name + `--suffix`. |
 | `plot-components` | `plot_components.py` | Read a combined exposure matrix from stdin and draw stacked signature-exposure bars. Supports ordering, custom colors, thresholds, labels, vertical layout, indicator strips, separator lines, and renormalization with an `Other` component. |
 | `histograms` | `histograms.py` | Plot histograms of signature proportions across exposure files. Reads separate decompose outputs by default or a combined sample-by-signature matrix with `--combined`. |
-| `plot-signature-stability` | `plot_signature_stability.py` | Plot a combined long `signature-stability` summary as one bar plot per signature. Samples are ordered by point exposure, error bars show bootstrap percentile proportion bounds, and bar colour indicates detection frequency categories: `<50%`, `50-75%`, `75-95%`, `95-99%`, and `>99%`. |
+| `plot-signature-stability` | `plot_signature_stability.py` | Plot a combined long `signature-stability` summary as one bar plot per signature. Samples are ordered by point exposure, error bars show bootstrap percentile proportion bounds, and bar colour indicates detection frequency categories: `<50%`, `50-75%`, `75-95%`, `95-99%`, and `>99%`. With `--combined-output`, also writes one PNG containing all per-signature plots. |
 
 ## Variant-Level Signature Assignment
 

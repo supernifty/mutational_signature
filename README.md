@@ -124,7 +124,8 @@ signature:
 ```bash
 uv run plot-signature-stability \
   --input cohort.signature_stability.tsv \
-  --output-dir results/signature_stability_plots
+  --output-dir results/signature_stability_plots \
+  --combined-output results/signature_stability_all.png
 ```
 
 Bars are ordered by point exposure within each signature. Bar colour indicates

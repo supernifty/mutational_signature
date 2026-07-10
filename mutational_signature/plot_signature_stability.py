@@ -6,6 +6,7 @@
 import argparse
 import csv
 import logging
+import math
 import os
 import re
 import sys
@@ -17,6 +18,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.image as mpimg
 
 
 REQUIRED_COLUMNS = (
@@ -135,6 +137,34 @@ def write_index(path, rows):
     writer.writerows(rows)
 
 
+def write_combined_image(index_rows, target, columns=2, dpi=180):
+  if len(index_rows) == 0:
+    raise ValueError('no plots to combine')
+  if columns <= 0:
+    raise ValueError('combined columns must be greater than zero')
+
+  rows = int(math.ceil(len(index_rows) / columns))
+  first = mpimg.imread(index_rows[0]['Plot'])
+  height = first.shape[0]
+  width = first.shape[1]
+  fig, axes = plt.subplots(rows, columns, figsize=(width * columns / dpi, height * rows / dpi), dpi=dpi)
+  axes = np.array(axes).reshape(-1)
+
+  for ax_index, ax in enumerate(axes):
+    ax.axis('off')
+    if ax_index >= len(index_rows):
+      continue
+    image = first if ax_index == 0 else mpimg.imread(index_rows[ax_index]['Plot'])
+    ax.imshow(image)
+
+  parent = os.path.dirname(target)
+  if parent != '':
+    os.makedirs(parent, exist_ok=True)
+  fig.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0.01, hspace=0.01)
+  fig.savefig(target, dpi=dpi)
+  plt.close(fig)
+
+
 def run(args):
   include = set(args.include) if args.include is not None else None
   exclude = set(args.exclude) if args.exclude is not None else None
@@ -158,6 +188,9 @@ def run(args):
 
   index_path = os.path.join(args.output_dir, 'index.tsv')
   write_index(index_path, index_rows)
+  if args.combined_output is not None:
+    write_combined_image(index_rows, args.combined_output, columns=args.combined_cols, dpi=args.dpi)
+    logging.info('wrote combined plot to %s', args.combined_output)
   logging.info('wrote %i plots to %s', len(index_rows), args.output_dir)
   return index_rows
 
@@ -172,6 +205,8 @@ def build_parser():
   parser.add_argument('--figure-width', type=float, help='figure width in inches; default scales with sample count')
   parser.add_argument('--figure-height', type=float, default=6, help='figure height in inches')
   parser.add_argument('--dpi', type=int, default=180, help='output image DPI')
+  parser.add_argument('--combined-output', help='also write a single PNG containing all per-signature plots')
+  parser.add_argument('--combined-cols', type=int, default=2, help='number of columns in --combined-output')
   parser.add_argument('--verbose', action='store_true', help='more logging')
   return parser
 

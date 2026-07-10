@@ -43,6 +43,7 @@ def test_detection_category_boundaries():
 def test_plot_signature_stability_cli_smoke(tmp_path):
   summary = tmp_path / "summary.tsv"
   out_dir = tmp_path / "plots"
+  combined = tmp_path / "combined.png"
   write_summary(summary)
   cmd = [
     sys.executable,
@@ -56,12 +57,18 @@ def test_plot_signature_stability_cli_smoke(tmp_path):
     "SBS1",
     "--dpi",
     "80",
+    "--combined-output",
+    str(combined),
+    "--combined-cols",
+    "1",
   ]
   subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, check=True)
   plot = out_dir / "SBS1.signature_stability.png"
   index = out_dir / "index.tsv"
   assert plot.exists()
   assert plot.stat().st_size > 0
+  assert combined.exists()
+  assert combined.stat().st_size > 0
   assert index.exists()
   rows = list(csv.DictReader(index.open(), delimiter="\t"))
   assert rows[0]["Signature"] == "SBS1"
