@@ -71,7 +71,7 @@ def doublet_context(variant, chroms, last_variant):
     if len(doublet) != 5:
       logging.warning('skipping doublet %s at %s:%i', doublet, no_chr(variant.CHROM), variant.POS)
     else:
-      doublet = mutational_signature.count.normalize_doublet(doublet)
+      doublet, _, _ = mutational_signature.count.normalize_doublet(doublet, None, None)
       logging.debug('doublet found at %s:%s: %s', no_chr(variant.CHROM), variant.POS, doublet)
       return doublet
   return None
